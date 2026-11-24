@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PATH_SEGMENT_PATTERN } from "./patterns.ts";
 
 /*
  * capture.json schema: the source of truth for one captured component.
@@ -14,7 +15,7 @@ import { z } from "zod";
 /** One path segment for library/<site>/<slug>/. Starts with a letter or digit, so "." and ".." can never match. */
 export const PathSegmentSchema = z
   .string()
-  .regex(/^[a-z0-9][a-z0-9._-]{0,99}$/i, "must be a single safe path segment");
+  .regex(PATH_SEGMENT_PATTERN, "must be a single safe path segment");
 
 /** A file path inside the capture folder, e.g. "states/hover.png". Never absolute and never climbs out with "..". */
 export const RelativeFilePathSchema = z
@@ -194,8 +195,33 @@ export const MotionEntrySchema = z.object({
 });
 export type MotionEntry = z.infer<typeof MotionEntrySchema>;
 
+/** Smooth-scroll libraries change how every scroll animation feels, so the rebuild needs their options. */
+export const SmoothScrollSchema = z.object({
+  library: z.enum(["lenis"]),
+  /** "global" when window.lenis was readable, "class" when only the html.lenis class was found. */
+  detectedBy: z.enum(["global", "class"]),
+  /** The library's options. Functions are stored as "[function]". */
+  options: z.record(z.string(), z.unknown()),
+});
+export type SmoothScroll = z.infer<typeof SmoothScrollSchema>;
+
+export const MotionSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  bySource: z.partialRecord(MotionSourceSchema, z.number().int().nonnegative()),
+  triggers: z.array(MotionTriggerSchema),
+  /** The family with the most entries: css covers transitions, keyframes and WAAPI; gsap covers ScrollTrigger. */
+  primary: z.enum(["css", "gsap", "framer-motion", "three", "lottie", "rive", "spline", "sampled", "none"]),
+  /** The motion library the rebuild should use. */
+  suggestedLibrary: z.enum(["framer-motion", "gsap", "react-three-fiber"]),
+});
+export type MotionSummary = z.infer<typeof MotionSummarySchema>;
+
 export const MotionSchema = z.object({
   entries: z.array(MotionEntrySchema),
+  smoothScroll: SmoothScrollSchema.optional(),
+  summary: MotionSummarySchema.optional(),
+  /** Motion the capture saw but could not read, in plain words. */
+  warnings: z.array(z.string()).optional(),
 });
 export type Motion = z.infer<typeof MotionSchema>;
 
@@ -219,14 +245,77 @@ export const SuggestedSplitSchema = z.object({
   domNodes: z.array(z.string()),
 });
 
+/** A framework or meta-framework found on the page, e.g. { name: "next", version: "15.1.0" }. */
+export const DetectedFrameworkSchema = z.object({
+  name: z.enum(["react", "next", "vue", "nuxt", "svelte", "astro"]),
+  version: z.string().optional(),
+});
+export type DetectedFramework = z.infer<typeof DetectedFrameworkSchema>;
+
 export const FrameworkSchema = z.object({
   kind: z.enum(["react", "vue", "none"]),
   components: z.array(FrameworkComponentSchema),
   suggestedSplit: z.array(SuggestedSplitSchema).optional(),
+  /** Every framework found on the page, not only the one the component tree came from. */
+  detected: z.array(DetectedFrameworkSchema).optional(),
+  /** "react-devtools" when the real React DevTools hook was read, "kinetic" when Kinetic's own hook was installed. */
+  hook: z.enum(["react-devtools", "kinetic", "none"]).optional(),
 });
 export type Framework = z.infer<typeof FrameworkSchema>;
 
 // ─── three (three/) ──────────────────────────────────────────────────────────
+
+const Vec3Schema = z.tuple([z.number(), z.number(), z.number()]);
+
+export const ThreeCameraSchema = z.object({
+  /** "PerspectiveCamera", "OrthographicCamera". */
+  type: z.string(),
+  fov: z.number().optional(),
+  zoom: z.number().optional(),
+  near: z.number().optional(),
+  far: z.number().optional(),
+  position: Vec3Schema,
+  /** Euler XYZ in radians. */
+  rotation: Vec3Schema,
+  /** World direction the camera looks along. */
+  direction: Vec3Schema,
+  /** Estimated look-at point: where the view ray passes closest to the world origin. */
+  target: Vec3Schema,
+});
+
+export const ThreeLightSchema = z.object({
+  type: z.string(),
+  name: z.string().optional(),
+  /** Hex colour, e.g. "#ffffff". */
+  color: z.string().optional(),
+  intensity: z.number().optional(),
+  position: Vec3Schema.optional(),
+  castShadow: z.boolean().optional(),
+});
+
+export const ThreeRendererSchema = z.object({
+  /** "ACESFilmicToneMapping" and so on. */
+  toneMapping: z.string(),
+  toneMappingExposure: z.number(),
+  /** "srgb", "srgb-linear". */
+  outputColorSpace: z.string(),
+  pixelRatio: z.number(),
+  shadows: z.object({ enabled: z.boolean(), type: z.string() }),
+  /** Drawing buffer size in CSS pixels. */
+  size: z.object({ width: z.number(), height: z.number() }).optional(),
+  clearColor: z.string().optional(),
+  clearAlpha: z.number().optional(),
+});
+
+/** WebGL content not drawn by three.js: Babylon.js, PixiJS or raw WebGL. */
+export const WebglSchema = z.object({
+  library: z.enum(["babylon", "pixi", "unknown"]),
+  contextType: z.enum(["webgl", "webgl2"]),
+  /** Selector of the canvas. */
+  canvas: z.string(),
+  /** "webgl/shaders/*.glsl", the shader sources the page compiled. */
+  shaderFiles: z.array(RelativeFilePathSchema),
+});
 
 export const ThreeSchema = z.object({
   revision: z.string().optional(),
@@ -236,7 +325,23 @@ export const ThreeSchema = z.object({
   shaderFiles: z.array(RelativeFilePathSchema),
   /** "three/camera-path.json". */
   cameraPathFile: RelativeFilePathSchema.optional(),
+  /** Pass and shader names seen while rendering, in order, e.g. ["RenderPass", "OutputShader"]. */
   postProcessing: z.array(z.string()).optional(),
+  /** "three/shaders/index.json": each ShaderMaterial with its shader files and uniform values. */
+  shaderIndexFile: RelativeFilePathSchema.optional(),
+  /** True when React Three Fiber manages the scene. */
+  reactThreeFiber: z.boolean().optional(),
+  /** Selector of the renderer's canvas. */
+  canvas: z.string().optional(),
+  camera: ThreeCameraSchema.optional(),
+  lights: z.array(ThreeLightSchema).optional(),
+  fog: z
+    .object({ type: z.enum(["Fog", "FogExp2"]), color: z.string(), near: z.number().optional(), far: z.number().optional(), density: z.number().optional() })
+    .optional(),
+  renderer: ThreeRendererSchema.optional(),
+  /** Binary data left out of scene.json because it was too big. */
+  stripped: z.array(z.object({ path: z.string(), reason: z.string(), size: z.number() })).optional(),
+  webgl: WebglSchema.optional(),
 });
 export type Three = z.infer<typeof ThreeSchema>;
 
@@ -259,6 +364,8 @@ export type Assets = z.infer<typeof AssetsSchema>;
 // ─── media (file paths inside the capture folder) ────────────────────────────
 
 export const MediaSchema = z.object({
+  /** Screenshot of the component in its default state, e.g. "states/default.png". */
+  screenshot: RelativeFilePathSchema.optional(),
   dom: RelativeFilePathSchema.optional(),
   styles: RelativeFilePathSchema.optional(),
   motion: RelativeFilePathSchema.optional(),
@@ -269,6 +376,105 @@ export const MediaSchema = z.object({
   notes: RelativeFilePathSchema.optional(),
 });
 export type Media = z.infer<typeof MediaSchema>;
+
+// ─── recording (original.webm) ───────────────────────────────────────────────
+// Written by the companion recorder, which replays the component in Playwright.
+
+export const RecordingStepSchema = z.object({
+  kind: z.enum(["idle", "hover", "focus", "scroll"]),
+  /** Selector of the hovered or focused element. */
+  target: z.string().optional(),
+  /** Child-index path from the component root to the target ([] is the root), so a rebuild can replay the same step. */
+  path: z.array(z.number().int().nonnegative()).optional(),
+  /** Milliseconds from the start of original.webm. */
+  start: z.number().nonnegative(),
+  end: z.number().nonnegative(),
+});
+export type RecordingStep = z.infer<typeof RecordingStepSchema>;
+
+export const RecordingSchema = z.object({
+  /** "original.webm". */
+  file: RelativeFilePathSchema,
+  durationMs: z.number().nonnegative(),
+  /** Size of the cropped video in pixels. */
+  size: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }),
+  /** How the component was found again: by meta.selector, or by matching its text and bounding box. */
+  locatedBy: z.enum(["selector", "text-and-box"]),
+  /** The page scroll range the scroll pass covered, in px, when the page could scroll. */
+  scrollRange: z.object({ start: z.number(), end: z.number() }).optional(),
+  steps: z.array(RecordingStepSchema),
+  recordedAt: z.iso.datetime({ offset: true }),
+  /** What the recorder could not do, in plain words. */
+  warnings: z.array(z.string()).optional(),
+});
+export type Recording = z.infer<typeof RecordingSchema>;
+
+// ─── job (companion processing status) ───────────────────────────────────────
+// The companion processes captures one at a time and writes the status here.
+
+export const JobStatusSchema = z.enum(["queued", "recording", "awaiting-rebuild", "rebuilding", "previewing", "done", "failed"]);
+export type JobStatus = z.infer<typeof JobStatusSchema>;
+
+export const JobSchema = z.object({
+  status: JobStatusSchema,
+  /** Set when status is "failed". */
+  error: z.string().optional(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+export type Job = z.infer<typeof JobSchema>;
+
+// ─── rebuild (REBUILD.md, Component.tsx, NOTES.md) ───────────────────────────
+// Written by the companion when it writes REBUILD.md and when a rebuild runs.
+
+export const RebuildModeSchema = z.enum(["handoff", "claude-cli", "api"]);
+export type RebuildMode = z.infer<typeof RebuildModeSchema>;
+
+export const RebuildSchema = z.object({
+  /** How the last rebuild ran: handoff leaves Component.tsx to the user's own agent. */
+  mode: RebuildModeSchema,
+  /** "REBUILD.md". */
+  prompt: RelativeFilePathSchema,
+  /** The model, in api mode. */
+  model: z.string().optional(),
+  /** Automatic fix passes run so far (claude-cli and api modes run at most one). */
+  fixPasses: z.number().int().nonnegative(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+export type Rebuild = z.infer<typeof RebuildSchema>;
+
+// ─── preview (Component.preview.webm, preview/, diff/) ───────────────────────
+// Written by the preview step, which renders Component.tsx in the sandbox and
+// compares each state screenshot with the original using pixelmatch.
+
+export const PreviewScoreSchema = z.object({
+  /** "default", "hover-0", "focus-1", "mobile": the original screenshot's name. */
+  state: z.string().min(1),
+  original: RelativeFilePathSchema,
+  /** The rebuild's screenshot of the same state, e.g. "preview/hover-0.png". */
+  preview: RelativeFilePathSchema.optional(),
+  /** Mismatched pixels in red, e.g. "diff/hover-0.png". */
+  diff: RelativeFilePathSchema.optional(),
+  /** Share of mismatched pixels, 0 (identical) to 1. Missing when the state could not be shown. */
+  score: z.number().min(0).max(1).optional(),
+  /** Why the state has no score, in plain words. */
+  error: z.string().optional(),
+});
+export type PreviewScore = z.infer<typeof PreviewScoreSchema>;
+
+export const PreviewSchema = z.object({
+  /** "Component.preview.webm". */
+  file: RelativeFilePathSchema.optional(),
+  /** Largest score that still passes. */
+  threshold: z.number().min(0).max(1),
+  scores: z.array(PreviewScoreSchema),
+  /** True when every scored state is at or under the threshold. */
+  passed: z.boolean(),
+  /** "DIFF.md", written when a state is over the threshold. */
+  diffReport: RelativeFilePathSchema.optional(),
+  renderedAt: z.iso.datetime({ offset: true }),
+  warnings: z.array(z.string()).optional(),
+});
+export type Preview = z.infer<typeof PreviewSchema>;
 
 // ─── capture (top level) ─────────────────────────────────────────────────────
 
@@ -286,5 +492,9 @@ export const CaptureSchema = z.object({
   three: ThreeSchema.optional(),
   assets: AssetsSchema.optional(),
   media: MediaSchema.optional(),
+  recording: RecordingSchema.optional(),
+  job: JobSchema.optional(),
+  rebuild: RebuildSchema.optional(),
+  preview: PreviewSchema.optional(),
 });
 export type Capture = z.infer<typeof CaptureSchema>;

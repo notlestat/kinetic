@@ -5,6 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./easing": "./src/easing.ts",
+    "./export-funnel-first": "./src/export-funnel-first.ts",
+    "./motion-summary": "./src/motion-summary.ts",
+    "./patterns": "./src/patterns.ts",
     "./fixtures/*": "./fixtures/*"
   },
   "scripts": {

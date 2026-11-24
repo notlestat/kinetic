@@ -1,0 +1,473 @@
+{
+  "entries": [
+    {
+      "id": "css-transition-1",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta",
+      "trigger": "hover",
+      "properties": [
+        {
+          "name": "background-color",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "rgb(99, 91, 255)"
+            },
+            {
+              "offset": 1,
+              "value": "rgb(10, 37, 64)"
+            }
+          ]
+        }
+      ],
+      "duration": 150,
+      "delay": 0,
+      "easing": [
+        0,
+        0,
+        0.58,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "kind": "CSSTransition",
+        "name": "background-color",
+        "timing": {
+          "duration": 150,
+          "delay": 0,
+          "endDelay": 0,
+          "iterations": 1,
+          "direction": "normal",
+          "easing": "ease-out",
+          "fill": "backwards"
+        },
+        "keyframeEasings": [
+          "linear",
+          "linear"
+        ]
+      }
+    },
+    {
+      "id": "css-transition-2",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta",
+      "trigger": "hover",
+      "properties": [
+        {
+          "name": "box-shadow",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "rgba(10, 37, 64, 0.2) 0px 1px 2px 0px"
+            },
+            {
+              "offset": 1,
+              "value": "rgba(10, 37, 64, 0.25) 0px 8px 24px 0px"
+            }
+          ]
+        }
+      ],
+      "duration": 200,
+      "delay": 0,
+      "easing": [
+        0.2,
+        0,
+        0,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "kind": "CSSTransition",
+        "name": "box-shadow",
+        "timing": {
+          "duration": 200,
+          "delay": 0,
+          "endDelay": 0,
+          "iterations": 1,
+          "direction": "normal",
+          "easing": "cubic-bezier(0.2, 0, 0, 1)",
+          "fill": "backwards"
+        },
+        "keyframeEasings": [
+          "linear",
+          "linear"
+        ]
+      }
+    },
+    {
+      "id": "css-transition-3",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta",
+      "trigger": "hover",
+      "properties": [
+        {
+          "name": "transform",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "none"
+            },
+            {
+              "offset": 1,
+              "value": "translateY(-2px)"
+            }
+          ]
+        }
+      ],
+      "duration": 150,
+      "delay": 0,
+      "easing": [
+        0,
+        0,
+        0.58,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "kind": "CSSTransition",
+        "name": "transform",
+        "timing": {
+          "duration": 150,
+          "delay": 0,
+          "endDelay": 0,
+          "iterations": 1,
+          "direction": "normal",
+          "easing": "ease-out",
+          "fill": "backwards"
+        },
+        "keyframeEasings": [
+          "linear",
+          "linear"
+        ]
+      }
+    },
+    {
+      "id": "css-transition-4",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta > span.arrow",
+      "trigger": "hover",
+      "properties": [
+        {
+          "name": "transform",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "none"
+            },
+            {
+              "offset": 1,
+              "value": "translate(3px)"
+            }
+          ]
+        }
+      ],
+      "duration": 150,
+      "delay": 0,
+      "easing": [
+        0,
+        0,
+        0.58,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "kind": "CSSTransition",
+        "name": "transform",
+        "timing": {
+          "duration": 150,
+          "delay": 0,
+          "endDelay": 0,
+          "iterations": 1,
+          "direction": "normal",
+          "easing": "ease-out",
+          "fill": "backwards"
+        },
+        "keyframeEasings": [
+          "linear",
+          "linear"
+        ]
+      }
+    },
+    {
+      "id": "css-transition-5",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta",
+      "trigger": "click",
+      "properties": [
+        {
+          "name": "background-color",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "rgb(99, 91, 255)"
+            },
+            {
+              "offset": 1,
+              "value": "rgb(10, 37, 64)"
+            }
+          ]
+        }
+      ],
+      "duration": 150,
+      "delay": 0,
+      "easing": [
+        0,
+        0,
+        0.58,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "from": "stylesheet",
+        "transitionProperty": "background-color",
+        "state": "active"
+      }
+    },
+    {
+      "id": "css-transition-6",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta",
+      "trigger": "click",
+      "properties": [
+        {
+          "name": "box-shadow",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "rgba(10, 37, 64, 0.2) 0px 1px 2px 0px"
+            },
+            {
+              "offset": 1,
+              "value": "rgba(10, 37, 64, 0.25) 0px 8px 24px 0px"
+            }
+          ]
+        }
+      ],
+      "duration": 200,
+      "delay": 0,
+      "easing": [
+        0.2,
+        0,
+        0,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "from": "stylesheet",
+        "transitionProperty": "box-shadow",
+        "state": "active"
+      }
+    },
+    {
+      "id": "css-transition-7",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta",
+      "trigger": "click",
+      "properties": [
+        {
+          "name": "transform",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "none"
+            },
+            {
+              "offset": 1,
+              "value": "matrix(1, 0, 0, 1, 0, 0)"
+            }
+          ]
+        }
+      ],
+      "duration": 150,
+      "delay": 0,
+      "easing": [
+        0,
+        0,
+        0.58,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "from": "stylesheet",
+        "transitionProperty": "transform",
+        "state": "active"
+      }
+    },
+    {
+      "id": "css-transition-8",
+      "source": "css-transition",
+      "target": "html > body > main > section.hero > button.cta > span.arrow",
+      "trigger": "click",
+      "properties": [
+        {
+          "name": "transform",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": "none"
+            },
+            {
+              "offset": 1,
+              "value": "matrix(1, 0, 0, 1, 3, 0)"
+            }
+          ]
+        }
+      ],
+      "duration": 150,
+      "delay": 0,
+      "easing": [
+        0,
+        0,
+        0.58,
+        1
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "exact",
+      "raw": {
+        "from": "stylesheet",
+        "transitionProperty": "transform",
+        "state": "active"
+      }
+    },
+    {
+      "id": "sampled-1",
+      "source": "sampled",
+      "target": "html > body > main > section.hero > a.chip > span.dot",
+      "trigger": "loop",
+      "properties": [
+        {
+          "name": "opacity",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0.994
+            },
+            {
+              "offset": 0.104,
+              "value": 0.856
+            },
+            {
+              "offset": 0.285,
+              "value": 0.429
+            },
+            {
+              "offset": 0.354,
+              "value": 0.292
+            },
+            {
+              "offset": 0.41,
+              "value": 0.224
+            },
+            {
+              "offset": 0.465,
+              "value": 0.2
+            },
+            {
+              "offset": 0.535,
+              "value": 0.238
+            },
+            {
+              "offset": 0.59,
+              "value": 0.318
+            },
+            {
+              "offset": 0.785,
+              "value": 0.771
+            },
+            {
+              "offset": 0.868,
+              "value": 0.929
+            },
+            {
+              "offset": 0.937,
+              "value": 0.994
+            },
+            {
+              "offset": 1,
+              "value": 0.986
+            }
+          ]
+        }
+      ],
+      "duration": 1200,
+      "delay": 0,
+      "easing": "linear",
+      "iterations": "infinite",
+      "direction": "normal",
+      "confidence": "approximate",
+      "raw": {
+        "window": "idle",
+        "frames": 91,
+        "sampledMs": 1492,
+        "periodFound": true
+      }
+    },
+    {
+      "id": "sampled-2",
+      "source": "sampled",
+      "target": "html > body > main > section.hero > a.chip",
+      "trigger": "hover",
+      "properties": [
+        {
+          "name": "y",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": -4
+            }
+          ]
+        }
+      ],
+      "duration": 300,
+      "delay": 0,
+      "easing": [
+        0.29,
+        0.791,
+        0.438,
+        0.978
+      ],
+      "iterations": 1,
+      "direction": "normal",
+      "confidence": "approximate",
+      "raw": {
+        "window": "hover",
+        "inputTarget": "html > body > main > section.hero > a.chip",
+        "frames": 19,
+        "fitError": 0.0038
+      }
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "bySource": {
+      "css-transition": 8,
+      "sampled": 2
+    },
+    "triggers": [
+      "click",
+      "hover",
+      "loop"
+    ],
+    "primary": "css",
+    "suggestedLibrary": "framer-motion"
+  }
+}

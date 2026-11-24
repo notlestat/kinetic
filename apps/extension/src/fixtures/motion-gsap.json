@@ -1,0 +1,442 @@
+{
+ "atStart": {
+  "animations": [],
+  "gsap": [
+   {
+    "id": "gsap-tween-1",
+    "targets": [
+     "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(1)",
+     "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(2)",
+     "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(3)"
+    ],
+    "values": {
+     "y": {
+      "from": 40,
+      "to": 0
+     },
+     "opacity": {
+      "from": 0,
+      "to": 1
+     }
+    },
+    "vars": {
+     "y": 40,
+     "opacity": 0,
+     "duration": 0.6,
+     "ease": "power2.out",
+     "stagger": 0.1,
+     "immediateRender": true,
+     "runBackwards": 1,
+     "overwrite": false,
+     "delay": 0
+    },
+    "duration": 0.6,
+    "delay": 0,
+    "ease": "power2.out",
+    "stagger": 0.1,
+    "repeat": 0,
+    "yoyo": false,
+    "position": 0,
+    "timelineId": "gsap-tween-2",
+    "scrollTriggered": false,
+    "isActive": true,
+    "paused": false
+   },
+   {
+    "id": "gsap-tween-3",
+    "targets": [
+     "html > body > div.marquee:nth-of-type(2) > div.marquee-track"
+    ],
+    "values": {
+     "xPercent": {
+      "from": 0,
+      "to": -50
+     }
+    },
+    "vars": {
+     "xPercent": -50,
+     "duration": 8,
+     "ease": "none",
+     "repeat": -1,
+     "overwrite": false,
+     "delay": 0
+    },
+    "duration": 8,
+    "delay": 0,
+    "ease": "none",
+    "repeat": -1,
+    "yoyo": false,
+    "position": null,
+    "timelineId": null,
+    "scrollTriggered": false,
+    "isActive": true,
+    "paused": false
+   },
+   {
+    "id": "gsap-tween-4",
+    "targets": [
+     "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box"
+    ],
+    "values": {
+     "x": {
+      "from": 0,
+      "to": 300
+     },
+     "rotation": {
+      "from": 0,
+      "to": 90
+     }
+    },
+    "vars": {
+     "x": 300,
+     "rotation": 90,
+     "ease": "none",
+     "scrollTrigger": {
+      "trigger": ".scrub-section",
+      "start": "top 80%",
+      "end": "bottom 20%",
+      "scrub": 1,
+      "toggleActions": "play",
+      "anticipatePin": 0
+     },
+     "duration": 0.5,
+     "overwrite": false,
+     "delay": 0,
+     "lazy": false
+    },
+    "duration": 0.5,
+    "delay": 0,
+    "ease": "none",
+    "repeat": 0,
+    "yoyo": false,
+    "position": null,
+    "timelineId": null,
+    "scrollTriggered": true,
+    "isActive": false,
+    "paused": true
+   },
+   {
+    "id": "gsap-tween-5",
+    "targets": [
+     "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section > h2.pin-title"
+    ],
+    "values": {
+     "opacity": {
+      "from": 0,
+      "to": 1
+     },
+     "y": {
+      "from": 30,
+      "to": 0
+     }
+    },
+    "vars": {
+     "opacity": 0,
+     "y": 30,
+     "duration": 0.5,
+     "ease": "power3.out",
+     "scrollTrigger": {
+      "trigger": ".pin-section",
+      "start": "top center",
+      "toggleActions": "play none none reverse",
+      "anticipatePin": 0
+     },
+     "immediateRender": true,
+     "runBackwards": 1,
+     "overwrite": false,
+     "delay": 0,
+     "lazy": false
+    },
+    "duration": 0.5,
+    "delay": 0,
+    "ease": "power3.out",
+    "repeat": 0,
+    "yoyo": false,
+    "position": null,
+    "timelineId": null,
+    "scrollTriggered": true,
+    "isActive": true,
+    "paused": false
+   }
+  ],
+  "scrollTriggers": [
+   {
+    "id": "scrolltrigger-1",
+    "trigger": "html > body > section.scrub-section:nth-of-type(2)",
+    "start": "top 80%",
+    "end": "bottom 20%",
+    "startPx": 287,
+    "endPx": 1727,
+    "scrub": 1,
+    "pin": false,
+    "pinTarget": null,
+    "toggleActions": "play",
+    "tweenIds": [
+     "gsap-tween-4"
+    ]
+   },
+   {
+    "id": "scrolltrigger-2",
+    "trigger": "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section",
+    "start": "top top",
+    "end": "+=600",
+    "startPx": 1887,
+    "endPx": 2487,
+    "scrub": false,
+    "pin": true,
+    "pinTarget": "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section",
+    "toggleActions": "play",
+    "tweenIds": []
+   },
+   {
+    "id": "scrolltrigger-3",
+    "trigger": "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section",
+    "start": "top center",
+    "end": "bottom top",
+    "startPx": 1487,
+    "endPx": 2687,
+    "scrub": false,
+    "pin": false,
+    "pinTarget": null,
+    "toggleActions": "play none none reverse",
+    "tweenIds": [
+     "gsap-tween-5"
+    ]
+   }
+  ],
+  "gsapUnreachable": false,
+  "smoothScroll": {
+   "library": "lenis",
+   "detectedBy": "global",
+   "options": {
+    "wrapper": "[node]",
+    "content": "html",
+    "eventsTarget": "[node]",
+    "smoothWheel": true,
+    "syncTouch": false,
+    "syncTouchLerp": 0.075,
+    "touchInertiaExponent": 1.7,
+    "duration": 1.2,
+    "easing": "[function]",
+    "lerp": 0.1,
+    "infinite": false,
+    "gestureOrientation": "vertical",
+    "orientation": "vertical",
+    "touchMultiplier": 1,
+    "wheelMultiplier": 1,
+    "autoResize": true,
+    "prevent": "undefined",
+    "virtualScroll": "undefined",
+    "overscroll": true,
+    "autoRaf": false,
+    "anchors": false,
+    "autoToggle": false,
+    "allowNestedScroll": false,
+    "naiveDimensions": false,
+    "stopInertiaOnNavigate": false,
+    "respectReducedMotion": true
+   }
+  }
+ },
+ "passes": [
+  {
+   "trigger": "hover",
+   "motion": {
+    "animations": [],
+    "gsap": [
+     {
+      "id": "gsap-tween-6",
+      "targets": [
+       "html > body > div.hover-card:nth-of-type(1)"
+      ],
+      "values": {
+       "scale": {
+        "from": 1,
+        "to": 1.04
+       }
+      },
+      "vars": {
+       "scale": 1.04,
+       "duration": 0.3,
+       "ease": "back.out(1.7)",
+       "overwrite": false,
+       "delay": 0
+      },
+      "duration": 0.3,
+      "delay": 0,
+      "ease": "back.out(1.7)",
+      "repeat": 0,
+      "yoyo": false,
+      "position": null,
+      "timelineId": null,
+      "scrollTriggered": false,
+      "isActive": false,
+      "paused": false
+     }
+    ],
+    "scrollTriggers": [],
+    "gsapUnreachable": false
+   }
+  }
+ ],
+ "css": {
+  "keyframes": {},
+  "animated": [],
+  "transitions": []
+ },
+ "baseline": {},
+ "states": [
+  {
+   "name": "hover",
+   "target": "html > body > div.hover-card:nth-of-type(1)",
+   "changes": {
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(1)": {
+     "opacity": "0.8015",
+     "transform": "matrix(1, 0, 0, 1, 0, 7.9398)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(2)": {
+     "opacity": "0.5781",
+     "transform": "matrix(1, 0, 0, 1, 0, 16.875)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(3)": {
+     "opacity": "0.2297",
+     "transform": "matrix(1, 0, 0, 1, 0, 30.8102)"
+    },
+    "html > body > div.marquee:nth-of-type(2) > div.marquee-track": {
+     "transform": "matrix(1, 0, 0, 1, -14.3584, 0)"
+    },
+    "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box": {
+     "transform": "matrix(0.0411276, 0.999154, -0.999154, 0.0411276, 292.143, 0)"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4)": {
+     "grid-template-rows": "700px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section": {
+     "grid-template-rows": "700px",
+     "max-height": "700px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section > h2.pin-title": {
+     "opacity": "0.8959",
+     "transform": "matrix(1, 0, 0, 1, 0, 3.1226)"
+    }
+   },
+   "screenshot": "states/hover-0.png"
+  },
+  {
+   "name": "focus",
+   "target": "html > body > div.hover-card:nth-of-type(1)",
+   "changes": {
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(1)": {
+     "opacity": "0.9277",
+     "transform": "matrix(1, 0, 0, 1, 0, 2.8935)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(2)": {
+     "opacity": "0.8015",
+     "transform": "matrix(1, 0, 0, 1, 0, 7.9398)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(3)": {
+     "opacity": "0.5781",
+     "transform": "matrix(1, 0, 0, 1, 0, 16.875)"
+    },
+    "html > body > div.hover-card:nth-of-type(1)": {
+     "outline-color": "rgb(0, 95, 204)",
+     "outline-style": "auto",
+     "outline-width": "1px"
+    },
+    "html > body > div.marquee:nth-of-type(2) > div.marquee-track": {
+     "transform": "matrix(1, 0, 0, 1, -20.1018, 0)"
+    },
+    "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box": {
+     "transform": "matrix(0, 1, -1, 0, 300, 0)"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4)": {
+     "grid-template-rows": "657px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section": {
+     "grid-template-rows": "657px",
+     "max-height": "657px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section > h2.pin-title": {
+     "opacity": "0.9817",
+     "transform": "matrix(1, 0, 0, 1, 0, 0.5502)"
+    }
+   },
+   "screenshot": "states/focus-0.png"
+  },
+  {
+   "name": "active",
+   "target": "html > body > div.hover-card:nth-of-type(1)",
+   "changes": {
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(1)": {
+     "opacity": "0.9837",
+     "transform": "matrix(1, 0, 0, 1, 0, 0.6503)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(2)": {
+     "opacity": "0.9259",
+     "transform": "matrix(1, 0, 0, 1, 0, 2.9635)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(3)": {
+     "opacity": "0.7981",
+     "transform": "matrix(1, 0, 0, 1, 0, 8.0767)"
+    },
+    "html > body > div.marquee:nth-of-type(2) > div.marquee-track": {
+     "transform": "matrix(1, 0, 0, 1, -25.7302, 0)"
+    },
+    "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box": {
+     "transform": "matrix(0, 1, -1, 0, 300, 0)"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4)": {
+     "grid-template-rows": "657px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section": {
+     "grid-template-rows": "657px",
+     "max-height": "657px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section > h2.pin-title": {
+     "opacity": "0.9991",
+     "transform": "matrix(1, 0, 0, 1, 0, 0.0263)"
+    }
+   },
+   "screenshot": "states/active-0.png"
+  },
+  {
+   "name": "mobile",
+   "target": "html > body",
+   "changes": {
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(1)": {
+     "opacity": "1",
+     "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(2)": {
+     "opacity": "1",
+     "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    },
+    "html > body > section.hero:nth-of-type(1) > div.hero-item:nth-of-type(3)": {
+     "opacity": "1",
+     "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    },
+    "html > body > div.marquee:nth-of-type(2) > div.marquee-track": {
+     "transform": "matrix(1, 0, 0, 1, -51.6902, 0)"
+    },
+    "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box": {
+     "transform": "matrix(0.655828, 0.75491, -0.75491, 0.655828, 163.392, 0)"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4)": {
+     "grid-template-columns": "390px",
+     "grid-template-rows": "844px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section": {
+     "grid-template-columns": "390px",
+     "grid-template-rows": "844px",
+     "max-height": "844px",
+     "max-width": "390px"
+    },
+    "html > body > div.pin-spacer:nth-of-type(4) > section.pin-section > h2.pin-title": {
+     "opacity": "0.7599",
+     "transform": "matrix(1, 0, 0, 1, 0, 7.203)"
+    }
+   },
+   "screenshot": "states/mobile.png"
+  }
+ ]
+}

@@ -1,0 +1,463 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "url": "http://127.0.0.1:5180/three.html",
+    "site": "127.0.0.1",
+    "slug": "three-stage",
+    "timestamp": "2026-11-24T21:22:41.445Z",
+    "viewport": {
+      "width": 1280,
+      "height": 800,
+      "deviceScaleFactor": 1
+    },
+    "selector": "html > body > main > section.stage",
+    "title": "three.js test page"
+  },
+  "dom": {
+    "html": "<section class=\"stage\"><canvas id=\"scene\" aria-label=\"Spinning torus knot\" data-engine=\"three.js r187\" width=\"912\" height=\"800\"></canvas></section>"
+  },
+  "styles": {
+    "nodes": [
+      {
+        "selector": "html > body > main > section.stage",
+        "tag": "section",
+        "box": {
+          "x": 184,
+          "y": 151,
+          "width": 912,
+          "height": 1600
+        },
+        "styles": {
+          "bottom": "0px",
+          "box-sizing": "border-box",
+          "color": "rgb(10, 37, 64)",
+          "font-family": "Inter, system-ui, sans-serif",
+          "left": "0px",
+          "position": "relative",
+          "right": "0px",
+          "top": "0px"
+        }
+      },
+      {
+        "selector": "#scene",
+        "tag": "canvas",
+        "box": {
+          "x": 184,
+          "y": 551,
+          "width": 912,
+          "height": 800
+        },
+        "styles": {
+          "aspect-ratio": "auto 912 / 800",
+          "border-bottom-left-radius": "radius-1",
+          "border-bottom-right-radius": "radius-1",
+          "border-top-left-radius": "radius-1",
+          "border-top-right-radius": "radius-1",
+          "box-sizing": "border-box",
+          "display": "block",
+          "position": "sticky",
+          "top": "0px"
+        }
+      }
+    ],
+    "tokens": {
+      "colors": {},
+      "fontSizes": {},
+      "spacing": {},
+      "radii": {
+        "radius-1": "16px"
+      },
+      "shadows": {}
+    },
+    "fonts": [
+      {
+        "family": "Inter",
+        "weight": "400",
+        "style": "normal",
+        "src": "http://127.0.0.1:5180/assets/inter-latin-400-normal-C38fXH4l.woff2"
+      }
+    ]
+  },
+  "states": [
+    {
+      "name": "mobile",
+      "target": "html > body > main > section.stage",
+      "changes": {
+        "#scene": {
+          "aspect-ratio": "auto 342 / 844"
+        }
+      },
+      "screenshot": "states/mobile.png"
+    }
+  ],
+  "motion": {
+    "entries": [
+      {
+        "id": "three-1",
+        "source": "three",
+        "target": "#scene",
+        "trigger": "loop",
+        "properties": [
+          {
+            "name": "rotation.y",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 0.1185
+              },
+              {
+                "offset": 1,
+                "value": 6.4017
+              }
+            ]
+          }
+        ],
+        "duration": 7854,
+        "delay": 0,
+        "easing": "linear",
+        "iterations": "infinite",
+        "direction": "normal",
+        "confidence": "approximate",
+        "raw": {
+          "object": "Hero",
+          "ratesPerSecond": {
+            "rotation.y": 0.8
+          },
+          "sampledMs": 2984
+        }
+      },
+      {
+        "id": "three-2",
+        "source": "three",
+        "target": "#scene",
+        "trigger": "scroll",
+        "properties": [
+          {
+            "name": "rotation.x",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": -0.1651
+              },
+              {
+                "offset": 0.1251,
+                "value": -0.2081
+              },
+              {
+                "offset": 0.2502,
+                "value": -0.2562
+              },
+              {
+                "offset": 0.3752,
+                "value": -0.3103
+              },
+              {
+                "offset": 0.5003,
+                "value": -0.3711
+              },
+              {
+                "offset": 0.6248,
+                "value": -0.439
+              },
+              {
+                "offset": 0.7498,
+                "value": -0.5154
+              },
+              {
+                "offset": 0.8749,
+                "value": -0.6007
+              },
+              {
+                "offset": 1,
+                "value": -0.6947
+              }
+            ]
+          },
+          {
+            "name": "position.y",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 1
+              },
+              {
+                "offset": 0.1251,
+                "value": 1.1876
+              },
+              {
+                "offset": 0.2502,
+                "value": 1.3752
+              },
+              {
+                "offset": 0.3752,
+                "value": 1.5629
+              },
+              {
+                "offset": 0.5003,
+                "value": 1.7505
+              },
+              {
+                "offset": 0.6248,
+                "value": 1.9371
+              },
+              {
+                "offset": 0.7498,
+                "value": 2.1248
+              },
+              {
+                "offset": 0.8749,
+                "value": 2.3124
+              },
+              {
+                "offset": 1,
+                "value": 2.5
+              }
+            ]
+          },
+          {
+            "name": "position.z",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 6
+              },
+              {
+                "offset": 0.1251,
+                "value": 5.6248
+              },
+              {
+                "offset": 0.2502,
+                "value": 5.2495
+              },
+              {
+                "offset": 0.3752,
+                "value": 4.8743
+              },
+              {
+                "offset": 0.5003,
+                "value": 4.499
+              },
+              {
+                "offset": 0.6248,
+                "value": 4.1257
+              },
+              {
+                "offset": 0.7498,
+                "value": 3.7505
+              },
+              {
+                "offset": 0.8749,
+                "value": 3.3752
+              },
+              {
+                "offset": 1,
+                "value": 3
+              }
+            ]
+          }
+        ],
+        "duration": 0,
+        "delay": 0,
+        "easing": "linear",
+        "iterations": 1,
+        "direction": "normal",
+        "scroll": {
+          "start": 0,
+          "end": 1511,
+          "scrub": true,
+          "pin": false
+        },
+        "confidence": "near",
+        "raw": {
+          "object": "camera",
+          "steps": 9
+        }
+      }
+    ],
+    "summary": {
+      "total": 2,
+      "bySource": {
+        "three": 2
+      },
+      "triggers": [
+        "loop",
+        "scroll"
+      ],
+      "primary": "three",
+      "suggestedLibrary": "react-three-fiber"
+    }
+  },
+  "framework": {
+    "kind": "none",
+    "components": [],
+    "detected": []
+  },
+  "three": {
+    "revision": "187",
+    "sceneFile": "three/scene.json",
+    "shaderFiles": [
+      "three/shaders/hero-glow-1.vert.glsl",
+      "three/shaders/hero-glow-1.frag.glsl"
+    ],
+    "cameraPathFile": "three/camera-path.json",
+    "postProcessing": [
+      "RenderPass",
+      "OutputShader"
+    ],
+    "shaderIndexFile": "three/shaders/index.json",
+    "reactThreeFiber": false,
+    "canvas": "#scene",
+    "camera": {
+      "type": "PerspectiveCamera",
+      "fov": 50,
+      "zoom": 1,
+      "near": 0.1,
+      "far": 100,
+      "position": [
+        0,
+        1.547,
+        4.906
+      ],
+      "rotation": [
+        -0.3055,
+        0,
+        0
+      ],
+      "direction": [
+        0,
+        -0.3007,
+        -0.9537
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ]
+    },
+    "lights": [
+      {
+        "type": "AmbientLight",
+        "name": "Fill",
+        "color": "#ffffff",
+        "intensity": 0.4,
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "castShadow": false
+      },
+      {
+        "type": "DirectionalLight",
+        "name": "Key",
+        "color": "#ffffff",
+        "intensity": 2,
+        "position": [
+          3,
+          5,
+          2
+        ],
+        "castShadow": true
+      }
+    ],
+    "fog": {
+      "type": "Fog",
+      "color": "#0a2540",
+      "near": 8,
+      "far": 20
+    },
+    "renderer": {
+      "toneMapping": "ACESFilmicToneMapping",
+      "toneMappingExposure": 1.1,
+      "outputColorSpace": "srgb",
+      "pixelRatio": 1,
+      "shadows": {
+        "enabled": true,
+        "type": "PCFShadowMap"
+      },
+      "size": {
+        "width": 912,
+        "height": 800
+      },
+      "clearAlpha": 1
+    },
+    "stripped": [
+      {
+        "path": "geometries[2].data.attributes.position",
+        "reason": "attribute data above 10000 numbers",
+        "size": 15000
+      }
+    ]
+  },
+  "media": {
+    "screenshot": "states/default.png",
+    "dom": "dom.html",
+    "styles": "styles.json",
+    "motion": "motion.json",
+    "framework": "framework.json",
+    "original": "original.webm",
+    "component": "Component.tsx",
+    "preview": "Component.preview.webm",
+    "notes": "NOTES.md"
+  },
+  "recording": {
+    "file": "original.webm",
+    "durationMs": 7240,
+    "size": {
+      "width": 960,
+      "height": 800
+    },
+    "locatedBy": "selector",
+    "scrollRange": {
+      "start": 0,
+      "end": 1511
+    },
+    "steps": [
+      {
+        "kind": "idle",
+        "start": 200,
+        "end": 1745
+      },
+      {
+        "kind": "hover",
+        "target": "html > body > main > section.stage",
+        "path": [],
+        "start": 1828,
+        "end": 3512
+      },
+      {
+        "kind": "scroll",
+        "start": 3533,
+        "end": 6951
+      }
+    ],
+    "recordedAt": "2026-11-24T21:22:59.356Z"
+  },
+  "job": {
+    "status": "done",
+    "updatedAt": "2026-11-24T21:23:12.010Z"
+  },
+  "preview": {
+    "file": "Component.preview.webm",
+    "threshold": 0.1,
+    "scores": [
+      {
+        "state": "default",
+        "original": "states/default.png",
+        "preview": "preview/default.png",
+        "diff": "diff/default.png",
+        "score": 0.4894
+      },
+      {
+        "state": "mobile",
+        "original": "states/mobile.png",
+        "preview": "preview/mobile.png",
+        "diff": "diff/mobile.png",
+        "score": 0.9103
+      }
+    ],
+    "passed": false,
+    "diffReport": "DIFF.md",
+    "renderedAt": "2026-11-24T21:23:12.007Z"
+  }
+}

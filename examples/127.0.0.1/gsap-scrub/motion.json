@@ -1,0 +1,253 @@
+{
+  "entries": [
+    {
+      "id": "scrolltrigger-1",
+      "source": "scrolltrigger",
+      "target": "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box:nth-of-type(1)",
+      "trigger": "scroll",
+      "properties": [
+        {
+          "name": "x",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": 300
+            }
+          ]
+        },
+        {
+          "name": "rotation",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": 90
+            }
+          ]
+        }
+      ],
+      "duration": 500,
+      "delay": 0,
+      "easing": "linear",
+      "iterations": 1,
+      "direction": "normal",
+      "scroll": {
+        "start": "top 80%",
+        "end": "bottom 20%",
+        "scrub": 1,
+        "pin": false
+      },
+      "confidence": "exact",
+      "raw": {
+        "ease": "none",
+        "vars": {
+          "x": 300,
+          "rotation": 90,
+          "ease": "none",
+          "scrollTrigger": {
+            "trigger": ".scrub-section",
+            "start": "top 80%",
+            "end": "bottom 20%",
+            "scrub": 1,
+            "toggleActions": "play",
+            "anticipatePin": 0
+          },
+          "duration": 0.5,
+          "overwrite": false,
+          "delay": 0,
+          "lazy": false
+        },
+        "position": null,
+        "timelineId": null,
+        "scrollTrigger": {
+          "id": "scrolltrigger-1",
+          "trigger": "html > body > section.scrub-section:nth-of-type(2)",
+          "start": "top 80%",
+          "end": "bottom 20%",
+          "startPx": 287,
+          "endPx": 1727,
+          "scrub": 1,
+          "pin": false,
+          "pinTarget": null,
+          "toggleActions": "play",
+          "tweenIds": [
+            "gsap-tween-1"
+          ]
+        }
+      }
+    },
+    {
+      "id": "sampled-1",
+      "source": "sampled",
+      "target": "html > body > section.scrub-section:nth-of-type(2) > div.parallax-orb:nth-of-type(2)",
+      "trigger": "scroll",
+      "properties": [
+        {
+          "name": "y",
+          "keyframes": [
+            {
+              "offset": 0,
+              "value": 0
+            },
+            {
+              "offset": 1,
+              "value": -160
+            }
+          ]
+        }
+      ],
+      "duration": 0,
+      "delay": 0,
+      "easing": "linear",
+      "iterations": 1,
+      "direction": "normal",
+      "scroll": {
+        "start": 127,
+        "end": 1887,
+        "scrub": true,
+        "pin": false
+      },
+      "confidence": "near",
+      "raw": {
+        "steps": 28,
+        "bbox": [
+          {
+            "offset": 0,
+            "x": 264,
+            "y": 1119,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.074,
+            "x": 264,
+            "y": 1107.2,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.185,
+            "x": 264,
+            "y": 1089.4,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.259,
+            "x": 264,
+            "y": 1077.5,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.37,
+            "x": 264,
+            "y": 1059.7,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.444,
+            "x": 264,
+            "y": 1047.9,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.556,
+            "x": 264,
+            "y": 1030.1,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.63,
+            "x": 264,
+            "y": 1018.3,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.741,
+            "x": 264,
+            "y": 1000.5,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.815,
+            "x": 264,
+            "y": 988.6,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 0.926,
+            "x": 264,
+            "y": 970.8,
+            "width": 64,
+            "height": 64
+          },
+          {
+            "offset": 1,
+            "x": 264,
+            "y": 959,
+            "width": 64,
+            "height": 64
+          }
+        ]
+      }
+    }
+  ],
+  "smoothScroll": {
+    "library": "lenis",
+    "detectedBy": "global",
+    "options": {
+      "wrapper": "[node]",
+      "content": "html",
+      "eventsTarget": "[node]",
+      "smoothWheel": true,
+      "syncTouch": false,
+      "syncTouchLerp": 0.075,
+      "touchInertiaExponent": 1.7,
+      "duration": 1.2,
+      "easing": "[function]",
+      "lerp": 0.1,
+      "infinite": false,
+      "gestureOrientation": "vertical",
+      "orientation": "vertical",
+      "touchMultiplier": 1,
+      "wheelMultiplier": 1,
+      "autoResize": true,
+      "prevent": "undefined",
+      "virtualScroll": "undefined",
+      "overscroll": true,
+      "autoRaf": false,
+      "anchors": false,
+      "autoToggle": false,
+      "allowNestedScroll": false,
+      "naiveDimensions": false,
+      "stopInertiaOnNavigate": false,
+      "respectReducedMotion": true
+    }
+  },
+  "summary": {
+    "total": 2,
+    "bySource": {
+      "scrolltrigger": 1,
+      "sampled": 1
+    },
+    "triggers": [
+      "scroll"
+    ],
+    "primary": "gsap",
+    "suggestedLibrary": "gsap"
+  }
+}

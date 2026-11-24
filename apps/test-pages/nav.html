@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Navigation test page</title>
+    <script type="module" src="/src/fonts.ts"></script>
+    <style>
+      .site-nav {
+        display: flex; align-items: center; justify-content: space-between; gap: 24px;
+        padding: 16px 24px; background: #fff; border-bottom: 1px solid #e3e8ee;
+      }
+      .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #0a2540; text-decoration: none; }
+      .brand img { width: 24px; height: 24px; }
+      .links { display: flex; gap: 8px; margin: 0; padding: 0; list-style: none; }
+      .links a {
+        display: block; padding: 8px 12px; border-radius: 8px; color: #425466; text-decoration: none;
+        transition: color 120ms ease, background-color 120ms ease;
+      }
+      .links a:hover { color: #0a2540; background: #f6f9fc; }
+      .links a:focus-visible { outline: 2px solid #635bff; outline-offset: 2px; }
+      .signin {
+        padding: 8px 16px; border-radius: 8px; color: #fff; background: #0a2540; text-decoration: none;
+        transition: background-color 150ms ease-out;
+      }
+      .signin:hover { background: #635bff; }
+      @media (max-width: 480px) { .links { display: none; } }
+    </style>
+  </head>
+  <body>
+    <nav class="site-nav" aria-label="Main">
+      <a class="brand" href="/">
+        <img src="logo.svg" alt="" />
+        Kinetic
+      </a>
+      <ul class="links">
+        <li><a href="/products">Products</a></li>
+        <li><a href="/pricing">Pricing</a></li>
+        <li><a href="/docs" data-track-click="docs">Docs</a></li>
+      </ul>
+      <a class="signin" href="/signin">Sign in</a>
+      <script>
+        // Inline script inside the selection. DOM capture must drop it.
+        window.navLoaded = true;
+      </script>
+    </nav>
+    <main>
+      <h1>Navigation</h1>
+      <p>A navigation bar with hover states on each link.</p>
+    </main>
+  </body>
+</html>

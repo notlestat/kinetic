@@ -1,22 +1,135 @@
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { CaptureSchema } from "@kinetic/schema";
-import { Hono } from "hono";
+import { type Capture, CaptureSchema, PathSegmentSchema, RelativeFilePathSchema } from "@kinetic/schema";
+import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { corsHeaders, LIBRARY_ORIGINS, libraryMayCall } from "./cors.ts";
+import { contentTypeFor, fileResponse } from "./files.ts";
+import { JobQueue } from "./jobs.ts";
+import {
+  captureDir,
+  captureFile,
+  LibraryPathError,
+  listCaptureFiles,
+  listCaptureRefs,
+  readCapture,
+  resolveCaptureFile,
+  withCaptureLock,
+  writeCapture,
+  writeFileAtomic,
+} from "./library.ts";
+import { type RebuildSettings, rebuildSettings } from "./env.ts";
+import { createPreviewJob, createRecordJob } from "./record-job.ts";
+import { createRebuildJob, loadPreview } from "./rebuild.ts";
+import { COMPONENT_FILE, componentExists, NOTES_FILE, REBUILD_FILE } from "./rebuild-prompt.ts";
 
 export const PORT = 4517;
 export const HOST = "127.0.0.1";
 
 const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+const MAX_BODY = 50 * 1024 * 1024;
 
 export interface AppOptions {
   /** Absolute path of the library/ folder captures are written into. */
   libraryDir: string;
+  /** The job queue. Defaults to one that records, rebuilds and previews with the settings below. */
+  jobs?: JobQueue;
+  /** Queue a recording as soon as a capture arrives. Off unless the caller turns it on. */
+  autoRecord?: boolean;
+  /** Rebuild mode and auto-rebuild. Defaults to handoff with no auto-rebuild. */
+  rebuild?: RebuildSettings;
 }
 
-export function createApp({ libraryDir }: AppOptions) {
+/** Handoff, no auto-rebuild: what an empty environment gives. */
+export const DEFAULT_REBUILD_SETTINGS: RebuildSettings = rebuildSettings({});
+
+/** The queue the companion runs: record, then rebuild (per mode), then preview. */
+export function defaultJobs(libraryDir: string, rebuild: RebuildSettings): JobQueue {
+  return new JobQueue({
+    libraryDir,
+    handlers: {
+      record: createRecordJob(undefined, { autoRebuild: rebuild.autoRebuild && rebuild.mode !== "handoff" }),
+      rebuild: createRebuildJob({ settings: rebuild }),
+      preview: createPreviewJob(loadPreview),
+    },
+  });
+}
+
+const CaptureFileBodySchema = z.object({
+  site: PathSegmentSchema,
+  slug: PathSegmentSchema,
+  path: RelativeFilePathSchema.refine((p) => p !== "capture.json", "capture.json is written by POST /capture only"),
+  contentBase64: z.base64(),
+});
+
+/** Reads a JSON body, answering 415 for other content types and 400 for malformed JSON. */
+async function readJson(c: Context): Promise<{ ok: true; body: unknown } | { ok: false; response: Response }> {
+  // Requiring JSON also forces browsers into a CORS preflight, which this server never approves for these routes.
+  if (!c.req.header("content-type")?.startsWith("application/json")) {
+    return { ok: false, response: c.json({ error: "content-type must be application/json" }, 415) };
+  }
+  try {
+    return { ok: true, body: await c.req.json() };
+  } catch {
+    return { ok: false, response: c.json({ error: "body is not valid JSON" }, 400) };
+  }
+}
+
+const jsonBodyLimit = bodyLimit({ maxSize: MAX_BODY, onError: (c) => c.json({ error: "body too large" }, 413) });
+
+/** "/files/<site>/<slug>/<path>" with each segment encoded. */
+export function fileUrl(origin: string, site: string, slug: string, relativePath: string): string {
+  return `${origin}/files/${[site, slug, ...relativePath.split("/")].map(encodeURIComponent).join("/")}`;
+}
+
+/** The media block's files as URLs. */
+function mediaUrls(origin: string, capture: Capture): Record<string, string> {
+  const { site, slug } = capture.meta;
+  return Object.fromEntries(Object.entries(capture.media ?? {}).flatMap(([key, file]) => (file ? [[key, fileUrl(origin, site, slug, file)]] : [])));
+}
+
+/** "button-hero" → "ButtonHero". */
+function pascalCase(slug: string): string {
+  return slug
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join("");
+}
+
+/** The root framework component's name when it has a readable one, otherwise the slug in PascalCase. */
+export function componentName(capture: Capture): string {
+  const root = capture.framework?.components.find((c) => c.parentId === null && !c.minified);
+  return root?.name ?? (pascalCase(capture.meta.slug) || capture.meta.slug);
+}
+
+/** NOTES.md is searched by the library's free-text filter, so the list carries its first 20,000 characters. */
+const MAX_NOTES_CHARS = 20_000;
+
+/** NOTES.md's text, resolved like GET /files so a symlink cannot read outside the capture folder. */
+async function readNotes(libraryDir: string, site: string, slug: string): Promise<string | undefined> {
+  try {
+    const file = await resolveCaptureFile(libraryDir, site, slug, NOTES_FILE);
+    return file ? (await readFile(file, "utf8")).slice(0, MAX_NOTES_CHARS) : undefined;
+  } catch {
+    // A missing, unreadable or escaping NOTES.md leaves the capture listed without notes.
+    return undefined;
+  }
+}
+
+/** What to paste into a coding agent in handoff mode. */
+export function handoffInstruction(dir: string, site: string, slug: string): string {
+  return [
+    `Open ${path.join(dir, REBUILD_FILE)} and follow it.`,
+    `Write only ${COMPONENT_FILE} and ${NOTES_FILE} in that folder, then run \`pnpm kinetic preview ${site}/${slug}\` from the Kinetic repo root.`,
+  ].join(" ");
+}
+
+export function createApp({ libraryDir, autoRecord = false, rebuild = DEFAULT_REBUILD_SETTINGS, jobs = defaultJobs(libraryDir, rebuild) }: AppOptions) {
   const app = new Hono();
+  // The Host header has passed the guard by the time this is used, so it is one of ALLOWED_HOSTS.
+  const originOf = (c: Context) => `http://${c.req.header("host")}`;
 
   // Any web page can send requests to localhost, so only the extension and local tools get in.
   app.use("*", async (c, next) => {
@@ -26,50 +139,175 @@ export function createApp({ libraryDir }: AppOptions) {
     }
     // Browsers attach Origin to cross-site requests. No Origin means curl, scripts or tests.
     const origin = c.req.header("origin");
-    if (origin !== undefined && !origin.startsWith("chrome-extension://")) {
-      return c.json({ error: "origin not allowed" }, 403);
+    if (origin === undefined || origin.startsWith("chrome-extension://")) {
+      await next();
+      return;
     }
-    await next();
+    // The library UI gets the read routes and the rebuild and preview routes, with CORS headers.
+    if (LIBRARY_ORIGINS.has(origin) && libraryMayCall(c.req.method, c.req.path, c.req.header("access-control-request-method"))) {
+      const headers = corsHeaders(origin, c.req.path);
+      if (c.req.method === "OPTIONS") return c.body(null, 204, headers);
+      await next();
+      for (const [name, value] of Object.entries(headers)) c.res.headers.set(name, value);
+      return;
+    }
+    return c.json({ error: "origin not allowed" }, 403);
   });
 
-  app.post(
-    "/capture",
-    bodyLimit({ maxSize: 50 * 1024 * 1024, onError: (c) => c.json({ error: "capture too large" }, 413) }),
-    async (c) => {
-      // Requiring JSON also forces browsers into a CORS preflight, which this server never approves.
-      if (!c.req.header("content-type")?.startsWith("application/json")) {
-        return c.json({ error: "content-type must be application/json" }, 415);
-      }
+  app.onError((error, c) => {
+    if (error instanceof LibraryPathError) return c.json({ error: error.message }, 400);
+    console.error("[kinetic] request failed", error);
+    return c.json({ error: "internal error" }, 500);
+  });
 
-      let body: unknown;
+  app.post("/capture", jsonBodyLimit, async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+
+    const parsed = CaptureSchema.safeParse(read.body);
+    if (!parsed.success) {
+      return c.json({ error: "invalid capture", issues: z.treeifyError(parsed.error) }, 400);
+    }
+
+    const capture = parsed.data;
+    // The schema already limits site and slug to safe names. captureDir checks the filesystem path again.
+    const dir = captureDir(libraryDir, capture.meta.site, capture.meta.slug);
+    await mkdir(dir, { recursive: true });
+    await withCaptureLock(dir, () => writeCapture(dir, capture));
+
+    const job = autoRecord && jobs.handles("record") ? await jobs.enqueue(capture.meta.site, capture.meta.slug, "record") : undefined;
+    return c.json({ ok: true, path: `${capture.meta.site}/${capture.meta.slug}/capture.json`, ...(job ? { job } : {}) }, 201);
+  });
+
+  app.post("/capture/file", jsonBodyLimit, async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+
+    const parsed = CaptureFileBodySchema.safeParse(read.body);
+    if (!parsed.success) {
+      return c.json({ error: "invalid file", issues: z.treeifyError(parsed.error) }, 400);
+    }
+
+    const { site, slug, path: relativePath, contentBase64 } = parsed.data;
+    const file = captureFile(libraryDir, site, slug, relativePath);
+    await writeFileAtomic(file, Buffer.from(contentBase64, "base64"));
+    return c.json({ ok: true, path: `${site}/${slug}/${relativePath}` }, 201);
+  });
+
+  // Every capture in the library, newest first, with what a library grid needs.
+  app.get("/captures", async (c) => {
+    const origin = originOf(c);
+    const captures = [];
+    for (const ref of await listCaptureRefs(libraryDir)) {
+      let capture: Capture;
       try {
-        body = await c.req.json();
+        capture = await readCapture(ref.dir);
       } catch {
-        return c.json({ error: "body is not valid JSON" }, 400);
+        captures.push({ site: ref.site, slug: ref.slug, error: "capture.json is not a valid capture" });
+        continue;
       }
+      const notes = await readNotes(libraryDir, ref.site, ref.slug);
+      captures.push({
+        site: ref.site,
+        slug: ref.slug,
+        componentName: componentName(capture),
+        meta: { url: capture.meta.url, title: capture.meta.title, timestamp: capture.meta.timestamp, selector: capture.meta.selector },
+        ...(capture.job ? { job: capture.job } : {}),
+        ...(capture.motion?.summary ? { motion: capture.motion.summary } : {}),
+        framework: { kind: capture.framework?.kind ?? "none", detected: capture.framework?.detected ?? [] },
+        hasThree: capture.three !== undefined,
+        ...(capture.preview ? { preview: { passed: capture.preview.passed, threshold: capture.preview.threshold } } : {}),
+        ...(notes !== undefined ? { notes } : {}),
+        media: mediaUrls(origin, capture),
+      });
+    }
+    captures.sort((a, b) => ("meta" in b && "meta" in a ? b.meta.timestamp.localeCompare(a.meta.timestamp) : 0));
+    return c.json({ captures });
+  });
 
-      const parsed = CaptureSchema.safeParse(body);
-      if (!parsed.success) {
-        return c.json({ error: "invalid capture", issues: z.treeifyError(parsed.error) }, 400);
-      }
+  // One capture, with a URL for every file in its folder.
+  app.get("/captures/:site/:slug", async (c) => {
+    const { site, slug } = c.req.param();
+    const dir = captureDir(libraryDir, site, slug);
+    let capture: Capture;
+    try {
+      capture = await readCapture(dir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return c.json({ error: "capture not found" }, 404);
+      throw error;
+    }
+    const origin = originOf(c);
+    const files = (await listCaptureFiles(dir)).map((f) => ({ ...f, url: fileUrl(origin, site, slug, f.path), contentType: contentTypeFor(f.path) }));
+    return c.json({
+      capture,
+      componentName: componentName(capture),
+      media: mediaUrls(origin, capture),
+      files,
+      // The library's rebuild panel: which mode the companion runs and what to hand an agent.
+      rebuild: { mode: rebuild.mode, folder: dir, handoff: handoffInstruction(dir, site, slug) },
+    });
+  });
 
-      const capture = parsed.data;
-      const dir = path.resolve(libraryDir, capture.meta.site, capture.meta.slug);
-      // The schema already limits site and slug to safe names. This second check guards the filesystem itself.
-      if (path.relative(libraryDir, dir).startsWith("..")) {
-        return c.json({ error: "capture path escapes the library" }, 400);
-      }
+  // A file inside a capture folder. Every segment is decoded and checked, then the real path must stay inside the folder.
+  app.get("/files/:site/:slug/*", async (c) => {
+    let segments: string[];
+    try {
+      segments = c.req.path.split("/").slice(2).map(decodeURIComponent);
+    } catch {
+      return c.json({ error: "malformed path" }, 400);
+    }
+    const [site = "", slug = "", ...rest] = segments;
+    if (rest.length === 0 || segments.some((s) => s === "" || s.includes("/") || s.includes("\\") || s.includes("\0"))) {
+      return c.json({ error: "path must be a relative path inside the capture folder" }, 400);
+    }
+    const file = await resolveCaptureFile(libraryDir, site, slug, rest.join("/"));
+    if (!file) return c.json({ error: "file not found" }, 404);
+    return fileResponse(file, c.req.header("range"), c.req.method);
+  });
 
-      await mkdir(dir, { recursive: true });
-      const file = path.join(dir, "capture.json");
-      // Write to a temp file, then rename, so a crash never leaves a half-written capture.json.
-      const tmp = `${file}.${process.pid}.tmp`;
-      await writeFile(tmp, `${JSON.stringify(capture, null, 2)}\n`);
-      await rename(tmp, file);
+  /** The capture folder for a job route, or a 404 response when it holds no capture. */
+  const jobTarget = async (c: Context): Promise<{ site: string; slug: string; dir: string } | Response> => {
+    const { site = "", slug = "" } = c.req.param();
+    const dir = captureDir(libraryDir, site, slug);
+    try {
+      await readCapture(dir);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return c.json({ error: "capture not found" }, 404);
+      throw error;
+    }
+    return { site, slug, dir };
+  };
 
-      return c.json({ ok: true, path: path.relative(libraryDir, file) }, 201);
-    },
-  );
+  // Queues a recording. JSON-only like every POST route, which keeps browsers behind a preflight.
+  app.post("/captures/:site/:slug/record", async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+    const target = await jobTarget(c);
+    if (target instanceof Response) return target;
+    const job = await jobs.enqueue(target.site, target.slug, "record");
+    return c.json({ ok: true, job }, 202);
+  });
+
+  // Starts a rebuild in the configured mode. Handoff writes REBUILD.md and waits for the user's agent.
+  app.post("/captures/:site/:slug/rebuild", async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+    const target = await jobTarget(c);
+    if (target instanceof Response) return target;
+    const job = await jobs.enqueue(target.site, target.slug, "rebuild");
+    return c.json({ ok: true, mode: rebuild.mode, job }, 202);
+  });
+
+  // Renders Component.tsx in the sandbox, records Component.preview.webm and scores each state.
+  app.post("/captures/:site/:slug/preview", async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+    const target = await jobTarget(c);
+    if (target instanceof Response) return target;
+    if (!(await componentExists(target.dir))) return c.json({ error: "Component.tsx not found. Write it first: see REBUILD.md." }, 409);
+    const job = await jobs.enqueue(target.site, target.slug, "preview");
+    return c.json({ ok: true, job }, 202);
+  });
 
   return app;
 }

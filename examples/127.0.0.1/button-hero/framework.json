@@ -1,0 +1,25 @@
+{
+  "kind": "none",
+  "components": [],
+  "suggestedSplit": [
+    {
+      "name": "Text",
+      "domNodes": [
+        "html > body > main > section.hero > p"
+      ]
+    },
+    {
+      "name": "Cta",
+      "domNodes": [
+        "html > body > main > section.hero > button.cta"
+      ]
+    },
+    {
+      "name": "Chip",
+      "domNodes": [
+        "html > body > main > section.hero > a.chip"
+      ]
+    }
+  ],
+  "detected": []
+}

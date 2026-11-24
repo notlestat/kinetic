@@ -1,0 +1,466 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "url": "http://127.0.0.1:5180/gsap.html",
+    "site": "127.0.0.1",
+    "slug": "gsap-scrub",
+    "timestamp": "2026-11-24T21:20:56.352Z",
+    "viewport": {
+      "width": 1280,
+      "height": 800,
+      "deviceScaleFactor": 1
+    },
+    "selector": "html > body > section.scrub-section:nth-of-type(2)",
+    "title": "GSAP, ScrollTrigger and Lenis test page"
+  },
+  "dom": {
+    "html": "<section class=\"scrub-section\">\n      <div class=\"scrub-box\" style=\"translate: none; rotate: none; scale: none; transform: translate3d(150px, 0px, 0px) rotate(45deg);\"></div>\n      <div class=\"parallax-orb\" style=\"transform: translateY(-80px);\"></div>\n    </section>"
+  },
+  "styles": {
+    "nodes": [
+      {
+        "selector": "html > body > section.scrub-section:nth-of-type(2)",
+        "tag": "section",
+        "box": {
+          "x": 0,
+          "y": 927,
+          "width": 1280,
+          "height": 960
+        },
+        "styles": {
+          "background-color": "rgb(255, 255, 255)",
+          "box-sizing": "border-box",
+          "color": "color-1",
+          "font-family": "Inter, system-ui, sans-serif",
+          "padding-bottom": "space-2",
+          "padding-left": "space-1",
+          "padding-right": "space-1",
+          "padding-top": "space-2"
+        }
+      },
+      {
+        "selector": "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box:nth-of-type(1)",
+        "tag": "div",
+        "box": {
+          "x": 154.12,
+          "y": 955.12,
+          "width": 135.76,
+          "height": 135.76
+        },
+        "styles": {
+          "background-color": "color-1",
+          "border-bottom-left-radius": "radius-1",
+          "border-bottom-right-radius": "radius-1",
+          "border-top-left-radius": "radius-1",
+          "border-top-right-radius": "radius-1",
+          "box-sizing": "border-box",
+          "perspective-origin": "48px 48px",
+          "transform": "matrix(0.707107, 0.707107, -0.707107, 0.707107, 150, 0)",
+          "transform-origin": "48px 48px"
+        }
+      },
+      {
+        "selector": "html > body > section.scrub-section:nth-of-type(2) > div.parallax-orb:nth-of-type(2)",
+        "tag": "div",
+        "box": {
+          "x": 264,
+          "y": 1039,
+          "width": 64,
+          "height": 64
+        },
+        "styles": {
+          "background-color": "rgb(128, 233, 255)",
+          "border-bottom-left-radius": "radius-2",
+          "border-bottom-right-radius": "radius-2",
+          "border-top-left-radius": "radius-2",
+          "border-top-right-radius": "radius-2",
+          "box-sizing": "border-box",
+          "margin-left": "240px",
+          "margin-top": "space-2",
+          "transform": "matrix(1, 0, 0, 1, 0, -80)"
+        }
+      }
+    ],
+    "tokens": {
+      "colors": {
+        "color-1": "rgb(10, 37, 64)"
+      },
+      "fontSizes": {},
+      "spacing": {
+        "space-1": "24px",
+        "space-2": "48px"
+      },
+      "radii": {
+        "radius-1": "16px",
+        "radius-2": "50%"
+      },
+      "shadows": {}
+    },
+    "fonts": [
+      {
+        "family": "Inter",
+        "weight": "400",
+        "style": "normal",
+        "src": "http://127.0.0.1:5180/assets/inter-latin-400-normal-C38fXH4l.woff2"
+      }
+    ]
+  },
+  "states": [
+    {
+      "name": "mobile",
+      "target": "html > body > section.scrub-section:nth-of-type(2)",
+      "changes": {
+        "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box:nth-of-type(1)": {
+          "transform": "matrix(0.673831, 0.738886, -0.738886, 0.673831, 158.789, 0)"
+        },
+        "html > body > section.scrub-section:nth-of-type(2) > div.parallax-orb:nth-of-type(2)": {
+          "transform": "matrix(1, 0, 0, 1, 0, -83.86)"
+        }
+      },
+      "screenshot": "states/mobile.png"
+    }
+  ],
+  "motion": {
+    "entries": [
+      {
+        "id": "scrolltrigger-1",
+        "source": "scrolltrigger",
+        "target": "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box:nth-of-type(1)",
+        "trigger": "scroll",
+        "properties": [
+          {
+            "name": "x",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 0
+              },
+              {
+                "offset": 1,
+                "value": 300
+              }
+            ]
+          },
+          {
+            "name": "rotation",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 0
+              },
+              {
+                "offset": 1,
+                "value": 90
+              }
+            ]
+          }
+        ],
+        "duration": 500,
+        "delay": 0,
+        "easing": "linear",
+        "iterations": 1,
+        "direction": "normal",
+        "scroll": {
+          "start": "top 80%",
+          "end": "bottom 20%",
+          "scrub": 1,
+          "pin": false
+        },
+        "confidence": "exact",
+        "raw": {
+          "ease": "none",
+          "vars": {
+            "x": 300,
+            "rotation": 90,
+            "ease": "none",
+            "scrollTrigger": {
+              "trigger": ".scrub-section",
+              "start": "top 80%",
+              "end": "bottom 20%",
+              "scrub": 1,
+              "toggleActions": "play",
+              "anticipatePin": 0
+            },
+            "duration": 0.5,
+            "overwrite": false,
+            "delay": 0,
+            "lazy": false
+          },
+          "position": null,
+          "timelineId": null,
+          "scrollTrigger": {
+            "id": "scrolltrigger-1",
+            "trigger": "html > body > section.scrub-section:nth-of-type(2)",
+            "start": "top 80%",
+            "end": "bottom 20%",
+            "startPx": 287,
+            "endPx": 1727,
+            "scrub": 1,
+            "pin": false,
+            "pinTarget": null,
+            "toggleActions": "play",
+            "tweenIds": [
+              "gsap-tween-1"
+            ]
+          }
+        }
+      },
+      {
+        "id": "sampled-1",
+        "source": "sampled",
+        "target": "html > body > section.scrub-section:nth-of-type(2) > div.parallax-orb:nth-of-type(2)",
+        "trigger": "scroll",
+        "properties": [
+          {
+            "name": "y",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 0
+              },
+              {
+                "offset": 1,
+                "value": -160
+              }
+            ]
+          }
+        ],
+        "duration": 0,
+        "delay": 0,
+        "easing": "linear",
+        "iterations": 1,
+        "direction": "normal",
+        "scroll": {
+          "start": 127,
+          "end": 1887,
+          "scrub": true,
+          "pin": false
+        },
+        "confidence": "near",
+        "raw": {
+          "steps": 28,
+          "bbox": [
+            {
+              "offset": 0,
+              "x": 264,
+              "y": 1119,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.074,
+              "x": 264,
+              "y": 1107.2,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.185,
+              "x": 264,
+              "y": 1089.4,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.259,
+              "x": 264,
+              "y": 1077.5,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.37,
+              "x": 264,
+              "y": 1059.7,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.444,
+              "x": 264,
+              "y": 1047.9,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.556,
+              "x": 264,
+              "y": 1030.1,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.63,
+              "x": 264,
+              "y": 1018.3,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.741,
+              "x": 264,
+              "y": 1000.5,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.815,
+              "x": 264,
+              "y": 988.6,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 0.926,
+              "x": 264,
+              "y": 970.8,
+              "width": 64,
+              "height": 64
+            },
+            {
+              "offset": 1,
+              "x": 264,
+              "y": 959,
+              "width": 64,
+              "height": 64
+            }
+          ]
+        }
+      }
+    ],
+    "smoothScroll": {
+      "library": "lenis",
+      "detectedBy": "global",
+      "options": {
+        "wrapper": "[node]",
+        "content": "html",
+        "eventsTarget": "[node]",
+        "smoothWheel": true,
+        "syncTouch": false,
+        "syncTouchLerp": 0.075,
+        "touchInertiaExponent": 1.7,
+        "duration": 1.2,
+        "easing": "[function]",
+        "lerp": 0.1,
+        "infinite": false,
+        "gestureOrientation": "vertical",
+        "orientation": "vertical",
+        "touchMultiplier": 1,
+        "wheelMultiplier": 1,
+        "autoResize": true,
+        "prevent": "undefined",
+        "virtualScroll": "undefined",
+        "overscroll": true,
+        "autoRaf": false,
+        "anchors": false,
+        "autoToggle": false,
+        "allowNestedScroll": false,
+        "naiveDimensions": false,
+        "stopInertiaOnNavigate": false,
+        "respectReducedMotion": true
+      }
+    },
+    "summary": {
+      "total": 2,
+      "bySource": {
+        "scrolltrigger": 1,
+        "sampled": 1
+      },
+      "triggers": [
+        "scroll"
+      ],
+      "primary": "gsap",
+      "suggestedLibrary": "gsap"
+    }
+  },
+  "framework": {
+    "kind": "none",
+    "components": [],
+    "suggestedSplit": [
+      {
+        "name": "ScrubBox",
+        "domNodes": [
+          "html > body > section.scrub-section:nth-of-type(2) > div.scrub-box:nth-of-type(1)"
+        ]
+      },
+      {
+        "name": "ParallaxOrb",
+        "domNodes": [
+          "html > body > section.scrub-section:nth-of-type(2) > div.parallax-orb:nth-of-type(2)"
+        ]
+      }
+    ],
+    "detected": []
+  },
+  "media": {
+    "screenshot": "states/default.png",
+    "dom": "dom.html",
+    "styles": "styles.json",
+    "motion": "motion.json",
+    "framework": "framework.json",
+    "original": "original.webm",
+    "component": "Component.tsx",
+    "preview": "Component.preview.webm",
+    "notes": "NOTES.md"
+  },
+  "recording": {
+    "file": "original.webm",
+    "durationMs": 6640,
+    "size": {
+      "width": 1280,
+      "height": 800
+    },
+    "locatedBy": "selector",
+    "scrollRange": {
+      "start": 127,
+      "end": 1887
+    },
+    "steps": [
+      {
+        "kind": "idle",
+        "start": 200,
+        "end": 1717
+      },
+      {
+        "kind": "hover",
+        "target": "html > body > section.scrub-section:nth-of-type(2)",
+        "path": [],
+        "start": 1725,
+        "end": 3351
+      },
+      {
+        "kind": "scroll",
+        "start": 3352,
+        "end": 6332
+      }
+    ],
+    "recordedAt": "2026-11-24T21:21:05.627Z"
+  },
+  "job": {
+    "status": "done",
+    "updatedAt": "2026-11-24T21:21:14.953Z"
+  },
+  "preview": {
+    "file": "Component.preview.webm",
+    "threshold": 0.1,
+    "scores": [
+      {
+        "state": "default",
+        "original": "states/default.png",
+        "preview": "preview/default.png",
+        "diff": "diff/default.png",
+        "score": 0.2241
+      },
+      {
+        "state": "mobile",
+        "original": "states/mobile.png",
+        "preview": "preview/mobile.png",
+        "diff": "diff/mobile.png",
+        "score": 0.0469
+      }
+    ],
+    "passed": false,
+    "diffReport": "DIFF.md",
+    "renderedAt": "2026-11-24T21:21:14.952Z"
+  }
+}

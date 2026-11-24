@@ -1,0 +1,6 @@
+/* Shared reset for the test pages. Each page adds its own component styles. */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: "Inter", system-ui, sans-serif; color: #0a2540; background: #f6f9fc; }
+main { max-width: 960px; margin: 0 auto; padding: 48px 24px; }
+h1 { font-size: 32px; margin: 0 0 24px; }
+p { line-height: 1.5; }
