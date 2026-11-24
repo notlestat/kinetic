@@ -1,5 +1,6 @@
 // GSAP motion for gsap.html: a staggered load timeline, a hover tween, an endless marquee,
 // a scrubbed ScrollTrigger, a pinned section, and Lenis smooth scrolling synced with ScrollTrigger.
+// Plus one scroll-linked element GSAP knows nothing about, for the recorder's scroll sampling.
 
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -39,3 +40,15 @@ gsap.from(".pin-title", {
   ease: "power3.out",
   scrollTrigger: { trigger: ".pin-section", start: "top center", toggleActions: "play none none reverse" },
 });
+
+// Parallax by hand: translateY follows how far the section has crossed the viewport.
+const orb = document.querySelector<HTMLElement>(".parallax-orb");
+const section = document.querySelector<HTMLElement>(".scrub-section");
+function updateOrb(): void {
+  if (!orb || !section) return;
+  const rect = section.getBoundingClientRect();
+  const progress = Math.min(1, Math.max(0, (window.innerHeight - rect.top) / (window.innerHeight + rect.height)));
+  orb.style.transform = `translateY(${(-160 * progress).toFixed(2)}px)`;
+}
+window.addEventListener("scroll", updateOrb, { passive: true });
+updateOrb();

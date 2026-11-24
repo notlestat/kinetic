@@ -377,6 +377,52 @@ export const MediaSchema = z.object({
 });
 export type Media = z.infer<typeof MediaSchema>;
 
+// ─── recording (original.webm) ───────────────────────────────────────────────
+// Written by the companion recorder, which replays the component in Playwright.
+
+export const RecordingStepSchema = z.object({
+  kind: z.enum(["idle", "hover", "focus", "scroll"]),
+  /** Selector of the hovered or focused element. */
+  target: z.string().optional(),
+  /** Child-index path from the component root to the target ([] is the root), so a rebuild can replay the same step. */
+  path: z.array(z.number().int().nonnegative()).optional(),
+  /** Milliseconds from the start of original.webm. */
+  start: z.number().nonnegative(),
+  end: z.number().nonnegative(),
+});
+export type RecordingStep = z.infer<typeof RecordingStepSchema>;
+
+export const RecordingSchema = z.object({
+  /** "original.webm". */
+  file: RelativeFilePathSchema,
+  durationMs: z.number().nonnegative(),
+  /** Size of the cropped video in pixels. */
+  size: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }),
+  /** How the component was found again: by meta.selector, or by matching its text and bounding box. */
+  locatedBy: z.enum(["selector", "text-and-box"]),
+  /** The page scroll range the scroll pass covered, in px, when the page could scroll. */
+  scrollRange: z.object({ start: z.number(), end: z.number() }).optional(),
+  steps: z.array(RecordingStepSchema),
+  recordedAt: z.iso.datetime({ offset: true }),
+  /** What the recorder could not do, in plain words. */
+  warnings: z.array(z.string()).optional(),
+});
+export type Recording = z.infer<typeof RecordingSchema>;
+
+// ─── job (companion processing status) ───────────────────────────────────────
+// The companion processes captures one at a time and writes the status here.
+
+export const JobStatusSchema = z.enum(["queued", "recording", "awaiting-rebuild", "rebuilding", "done", "failed"]);
+export type JobStatus = z.infer<typeof JobStatusSchema>;
+
+export const JobSchema = z.object({
+  status: JobStatusSchema,
+  /** Set when status is "failed". */
+  error: z.string().optional(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+export type Job = z.infer<typeof JobSchema>;
+
 // ─── capture (top level) ─────────────────────────────────────────────────────
 
 export const CAPTURE_SCHEMA_VERSION = 1;
@@ -393,5 +439,7 @@ export const CaptureSchema = z.object({
   three: ThreeSchema.optional(),
   assets: AssetsSchema.optional(),
   media: MediaSchema.optional(),
+  recording: RecordingSchema.optional(),
+  job: JobSchema.optional(),
 });
 export type Capture = z.infer<typeof CaptureSchema>;

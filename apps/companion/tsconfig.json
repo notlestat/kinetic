@@ -1,6 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // DOM types for src/page-scripts.ts, which runs inside the recorded page, and for
+    // the extension's selector function the recorder injects.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
   "include": ["src", "tsup.config.ts"]

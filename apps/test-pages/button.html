@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Button test page</title>
     <script type="module" src="/src/fonts.ts"></script>
+    <script type="module" src="/src/button-page.ts"></script>
     <style>
       .hero { display: grid; gap: 16px; justify-items: start; padding: 48px; border-radius: 16px; background: #fff; }
       .cta {
@@ -21,6 +22,9 @@
       .cta .arrow { display: inline-block; transition: transform 150ms ease-out; }
       .cta:hover .arrow { transform: translateX(3px); }
       @media (max-width: 480px) { .cta { width: 100%; justify-content: center; } }
+      /* Moved by requestAnimationFrame in src/button-page.ts, so no CSS or WAAPI entry describes it. */
+      .chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; color: #0a2540; background: #f6f9fc; text-decoration: none; font: 500 14px/1.2 "Inter", system-ui, sans-serif; }
+      .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #00d924; }
     </style>
   </head>
   <body>
@@ -31,6 +35,7 @@
         <button class="cta" type="button" data-analytics-id="hero-cta" onclick="void 0">
           Start now <span class="arrow" aria-hidden="true">→</span>
         </button>
+        <a class="chip" href="#pricing">See pricing <span class="dot" aria-hidden="true"></span></a>
       </section>
     </main>
   </body>

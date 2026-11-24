@@ -15,6 +15,8 @@
       .spacer { height: 70vh; }
       .scrub-section { height: 120vh; padding: 48px 24px; background: #fff; }
       .scrub-box { width: 96px; height: 96px; border-radius: 16px; background: #0a2540; }
+      /* Moved by a plain scroll listener in src/gsap-page.ts: no ScrollTrigger describes it. */
+      .parallax-orb { width: 64px; height: 64px; margin: 48px 0 0 240px; border-radius: 50%; background: #80e9ff; }
       .pin-section { display: grid; place-items: center; height: 100vh; background: #0a2540; color: #fff; }
       .pin-title { font-size: 48px; margin: 0; }
     </style>
@@ -32,6 +34,7 @@
     <div class="spacer"></div>
     <section class="scrub-section">
       <div class="scrub-box"></div>
+      <div class="parallax-orb"></div>
     </section>
     <section class="pin-section">
       <h2 class="pin-title">Pinned</h2>

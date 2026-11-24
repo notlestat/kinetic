@@ -3,5 +3,7 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+  # Downloads the ffmpeg binary the companion uses to crop original.webm.
+  ffmpeg-static: true
 minimumReleaseAgeExclude:
   - lenis@1.3.28

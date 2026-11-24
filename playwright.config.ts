@@ -25,7 +25,8 @@ export default defineConfig({
       port: 4517,
       // Never reuse a companion that writes to the real library.
       reuseExistingServer: false,
-      env: { KINETIC_LIBRARY_DIR: E2E_LIBRARY_DIR },
+      // Recording is started explicitly by the Part 5 tests, so earlier tests read capture.json undisturbed.
+      env: { KINETIC_LIBRARY_DIR: E2E_LIBRARY_DIR, KINETIC_AUTO_RECORD: "0" },
       timeout: 60_000,
     },
   ],
