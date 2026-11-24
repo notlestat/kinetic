@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.output/
+.wxt/
+*.tsbuildinfo
+.env
+.env.*
+.DS_Store
+
+# Captures written by the companion. Scraped material stays local.
+# Leading slash: root only, so apps/library is still tracked.
+/library/

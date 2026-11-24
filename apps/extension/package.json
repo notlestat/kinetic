@@ -1,0 +1,19 @@
+{
+  "name": "@kinetic/extension",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "postinstall": "wxt prepare"
+  },
+  "dependencies": {
+    "@kinetic/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "wxt": "^0.21.5"
+  }
+}
