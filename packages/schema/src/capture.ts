@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PATH_SEGMENT_PATTERN } from "./patterns.ts";
 
 /*
  * capture.json schema: the source of truth for one captured component.
@@ -14,7 +15,7 @@ import { z } from "zod";
 /** One path segment for library/<site>/<slug>/. Starts with a letter or digit, so "." and ".." can never match. */
 export const PathSegmentSchema = z
   .string()
-  .regex(/^[a-z0-9][a-z0-9._-]{0,99}$/i, "must be a single safe path segment");
+  .regex(PATH_SEGMENT_PATTERN, "must be a single safe path segment");
 
 /** A file path inside the capture folder, e.g. "states/hover.png". Never absolute and never climbs out with "..". */
 export const RelativeFilePathSchema = z
@@ -259,6 +260,8 @@ export type Assets = z.infer<typeof AssetsSchema>;
 // ─── media (file paths inside the capture folder) ────────────────────────────
 
 export const MediaSchema = z.object({
+  /** Screenshot of the component in its default state, e.g. "states/default.png". */
+  screenshot: RelativeFilePathSchema.optional(),
   dom: RelativeFilePathSchema.optional(),
   styles: RelativeFilePathSchema.optional(),
   motion: RelativeFilePathSchema.optional(),

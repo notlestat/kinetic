@@ -10,3 +10,7 @@ dist/
 # Captures written by the companion. Scraped material stays local.
 # Leading slash: root only, so apps/library is still tracked.
 /library/
+
+# Playwright output
+/test-results/
+/playwright-report/

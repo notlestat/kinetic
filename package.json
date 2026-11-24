@@ -11,10 +11,14 @@
     "dev:companion": "pnpm --filter @kinetic/companion dev",
     "dev:library": "pnpm --filter @kinetic/library dev",
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "vitest run"
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p e2e",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "dev:test-pages": "pnpm --filter @kinetic/test-pages dev"
   },
   "devDependencies": {
+    "@kinetic/schema": "workspace:*",
+    "@playwright/test": "^1.65.1",
     "@types/node": "^24.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.1.1"

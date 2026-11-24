@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./patterns": "./src/patterns.ts",
     "./fixtures/*": "./fixtures/*"
   },
   "scripts": {
