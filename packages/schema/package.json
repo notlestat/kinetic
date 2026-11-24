@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./easing": "./src/easing.ts",
+    "./motion-summary": "./src/motion-summary.ts",
     "./patterns": "./src/patterns.ts",
     "./fixtures/*": "./fixtures/*"
   },

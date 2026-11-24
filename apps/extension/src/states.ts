@@ -17,6 +17,8 @@ const FORCED: Record<"hover" | "focus" | "active", string[]> = {
 };
 
 export interface StateCaptureResult {
+  /** Full computed styles of every node at rest. */
+  baseline: StyleSnapshot;
   states: State[];
   files: CaptureFile[];
   /** The default-state screenshot, if one was taken. */
@@ -122,7 +124,7 @@ export async function captureStates(
     states.push(mobile.state);
     if (mobile.file) files.push(mobile.file);
   }
-  return { states, files, screenshot: defaultShot };
+  return { baseline, states, files, screenshot: defaultShot };
 }
 
 async function captureMobile(

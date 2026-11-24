@@ -2,9 +2,12 @@
 
 import { browser } from "wxt/browser";
 import { CdpSession } from "./cdp.ts";
+import { MotionPass, type PassHooks, type PassResult } from "./cdp-motion.ts";
 import { deliver, pendingCount, RETRY_ALARM, retryPending, setCompanionUrlForTests } from "./companion-client.ts";
 import type { CaptureOutcome, CaptureSubmission, RuntimeMessage } from "./messages.ts";
-import { captureStates } from "./states.ts";
+import type { MainWorldMotion } from "./motion-records.ts";
+import { buildMotion } from "./motion-normalise.ts";
+import { captureStates, type StateCaptureResult } from "./states.ts";
 
 /** Test hooks exist only in dev and test builds. */
 const TEST_HOOKS = import.meta.env.MODE !== "production";
@@ -56,29 +59,71 @@ async function togglePicker(tabId: number | undefined): Promise<void> {
   }
 }
 
-/** Adds what only the debugger can see (states, screenshots) to the content script's capture, then delivers it. */
+/** Asks the content script (and through it the MAIN world) for the motion running right now. */
+async function collectMotion(tabId: number, rootSelector: string): Promise<MainWorldMotion | undefined> {
+  // After a reload the content script needs a moment to start, so retry briefly.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    try {
+      return (await browser.tabs.sendMessage(tabId, { type: "capture:collect-motion", rootSelector } satisfies RuntimeMessage, {
+        frameId: 0,
+      })) as MainWorldMotion | undefined;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Adds what only the debugger can see (states, screenshots, the Animation
+ * domain) to the content script's capture, then delivers it.
+ */
 async function runCapture(tabId: number, submission: CaptureSubmission): Promise<CaptureOutcome> {
   const capture = structuredClone(submission.capture);
   const files = [...submission.files];
+  const { rootSelector, interactive } = submission;
 
   let session: CdpSession | undefined;
   try {
     session = await CdpSession.attach(tabId);
   } catch (error) {
     // Another debugger (DevTools) is attached, or the page cannot be debugged. Save what we have.
-    console.warn("[kinetic] could not attach the debugger; saving without states", error);
+    console.warn("[kinetic] could not attach the debugger; saving without states or the Animation domain", error);
   }
 
+  let states: StateCaptureResult | undefined;
+  const passes: PassResult[] = [];
   if (session) {
     try {
-      const result = await captureStates(session, submission.rootSelector, submission.interactive);
-      capture.states = result.states;
-      files.push(...result.files);
-      if (result.screenshot) capture.media = { ...capture.media, screenshot: result.screenshot };
+      states = await captureStates(session, rootSelector, interactive);
+      capture.states = states.states;
+      files.push(...states.files);
+      if (states.screenshot) capture.media = { ...capture.media, screenshot: states.screenshot };
+
+      const hooks: PassHooks = {
+        arm: async (trigger) => {
+          await browser.tabs.sendMessage(tabId, { type: "capture:watch", trigger } satisfies RuntimeMessage, { frameId: 0 });
+        },
+        collect: () => collectMotion(tabId, rootSelector),
+      };
+      const pass = new MotionPass(session, hooks);
+      passes.push(...(await pass.fireStates(interactive)));
+      if (submission.options.reloadForLoadAnimations) passes.push(...(await pass.reloadForLoadAnimations()));
     } finally {
       await session.detach();
     }
   }
 
-  return deliver({ capture, files });
+  const motionInputs = {
+    atStart: submission.motion,
+    passes,
+    css: submission.cssMotion,
+    baseline: states?.baseline.styles ?? {},
+    states: capture.states ?? [],
+  };
+  capture.motion = buildMotion(motionInputs);
+
+  const outcome = await deliver({ capture, files });
+  // Test builds return the raw motion inputs, so e2e/record-fixtures can save them for the unit tests.
+  return TEST_HOOKS ? { ...outcome, debug: { motionInputs } } : outcome;
 }

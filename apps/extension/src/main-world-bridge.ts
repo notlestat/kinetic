@@ -10,9 +10,18 @@ import { isKineticMessage, type MainWorldReport, postToWindow, ROOT_ATTRIBUTE } 
 /** The MAIN world samples three.js renders for a few seconds, so this has to be generous. */
 export const MAIN_WORLD_TIMEOUT_MS = 20_000;
 
-export async function requestMainWorldReport(root: Element, rootSelector: string): Promise<MainWorldReport | undefined> {
+/**
+ * Asks the MAIN world for its report. With a root element, the root is marked so
+ * the MAIN world finds exactly that element. Without one (the motion pass, or
+ * after a reload) it finds the root by selector.
+ */
+export async function requestMainWorldReport(
+  root: Element | null,
+  rootSelector: string,
+  mode: "full" | "motion" = "full",
+): Promise<MainWorldReport | undefined> {
   const requestId = crypto.randomUUID();
-  root.setAttribute(ROOT_ATTRIBUTE, requestId);
+  root?.setAttribute(ROOT_ATTRIBUTE, requestId);
   try {
     return await new Promise<MainWorldReport | undefined>((resolve) => {
       const timer = setTimeout(() => {
@@ -27,9 +36,29 @@ export async function requestMainWorldReport(root: Element, rootSelector: string
         resolve(event.data.report as MainWorldReport);
       }
       window.addEventListener("message", onMessage);
-      postToWindow("capture:collect", { requestId, rootSelector });
+      postToWindow("capture:collect", { requestId, rootSelector, mode });
     });
   } finally {
-    root.removeAttribute(ROOT_ATTRIBUTE);
+    root?.removeAttribute(ROOT_ATTRIBUTE);
   }
+}
+
+/** Asks the MAIN world to start recording the animations the next input starts. Resolves once it is listening. */
+export async function armMainWorldWatch(trigger: string): Promise<boolean> {
+  const requestId = crypto.randomUUID();
+  return new Promise<boolean>((resolve) => {
+    const timer = setTimeout(() => {
+      window.removeEventListener("message", onMessage);
+      resolve(false);
+    }, 2000);
+    function onMessage(event: MessageEvent) {
+      if (event.source !== window || !isKineticMessage(event.data)) return;
+      if (event.data.type !== "motion:watching" || event.data.requestId !== requestId) return;
+      clearTimeout(timer);
+      window.removeEventListener("message", onMessage);
+      resolve(true);
+    }
+    window.addEventListener("message", onMessage);
+    postToWindow("motion:watch", { requestId, trigger });
+  });
 }

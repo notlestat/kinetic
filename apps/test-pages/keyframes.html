@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSS keyframes and WAAPI test page</title>
+    <script type="module" src="/src/fonts.ts"></script>
+    <script type="module" src="/src/keyframes.ts"></script>
+    <style>
+      .panel { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 32px; border-radius: 16px; background: #fff; }
+      .badge {
+        justify-self: start; padding: 4px 10px; border-radius: 999px; color: #fff; background: #e5484d;
+        font-size: 13px; font-weight: 600; animation: pulse 1200ms ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(1.08); }
+      }
+      .fade-in { margin: 0; animation: fade-up 600ms cubic-bezier(0.2, 0, 0, 1) 100ms both; }
+      @keyframes fade-up {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .spinner { width: 32px; height: 32px; border: 3px solid #e3e8ee; border-top-color: #635bff; border-radius: 50%; }
+      .card { padding: 24px; border-radius: 12px; background: #f6f9fc; box-shadow: 0 1px 2px rgba(10, 37, 64, 0.1); cursor: pointer; }
+      .go {
+        justify-self: start; padding: 10px 20px; border: 0; border-radius: 8px; color: #fff; background: #0a2540;
+        font: inherit; cursor: pointer; transition: background-color 200ms ease;
+      }
+      .go:hover { background: #635bff; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Keyframes and WAAPI</h1>
+      <section class="panel">
+        <span class="badge">Live</span>
+        <h2 class="fade-in">Fades up on load</h2>
+        <div class="spinner" role="progressbar" aria-label="Loading"></div>
+        <div class="card" tabindex="0">Hover or focus me</div>
+        <button class="go" type="button">Go</button>
+      </section>
+    </main>
+  </body>
+</html>

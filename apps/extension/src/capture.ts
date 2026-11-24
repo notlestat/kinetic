@@ -2,6 +2,7 @@
 
 import type { Capture } from "@kinetic/schema";
 import { PATH_SEGMENT_PATTERN } from "@kinetic/schema/patterns";
+import { collectCssMotion } from "./css-motion.ts";
 import { captureDom } from "./dom-capture.ts";
 import { requestMainWorldReport } from "./main-world-bridge.ts";
 import { type CaptureFile, type CaptureOptions, type CaptureSubmission, type StyleSnapshot, textToBase64 } from "./messages.ts";
@@ -107,6 +108,8 @@ export async function collectCapture(
     rootSelector,
     interactive: interactiveElements(root).map(uniqueSelector),
     options: { reloadForLoadAnimations: options.reloadForLoadAnimations ?? false },
+    motion: report?.motion,
+    cssMotion: collectCssMotion(nodes),
   };
 }
 

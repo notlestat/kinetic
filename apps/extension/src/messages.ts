@@ -1,6 +1,7 @@
 // Message shapes shared by the content script, the background worker and the MAIN world.
 
 import type { BoundingBox, Capture } from "@kinetic/schema";
+import type { CssMotionReport, MainWorldMotion } from "./motion-records.ts";
 import type { StyleMap } from "./style-diff.ts";
 
 export const KINETIC_SOURCE = "kinetic";
@@ -38,6 +39,9 @@ export interface CaptureOptions {
   reloadForLoadAnimations?: boolean;
 }
 
+/** The trigger the background is firing while it asks the MAIN world for running motion. */
+export type MotionPassTrigger = "hover" | "focus" | "load";
+
 /** A file saved next to capture.json through POST /capture/file. */
 export interface CaptureFile {
   /** Relative path inside the capture folder, e.g. "states/hover-0.png". */
@@ -62,8 +66,10 @@ export function bytesToBase64(bytes: Uint8Array): string {
  * framework, three, assets) and text files such as three/scene.json.
  */
 export interface MainWorldReport {
-  sections: Partial<Pick<Capture, "motion" | "framework" | "three" | "assets">>;
+  sections: Partial<Pick<Capture, "framework" | "three" | "assets">>;
   files: { path: string; text: string }[];
+  /** Raw motion records. The background normalises them together with the Animation domain's. */
+  motion?: MainWorldMotion;
 }
 
 /** What the content script hands to the background after collecting DOM and styles. */
@@ -76,6 +82,10 @@ export interface CaptureSubmission {
   /** Interactive elements inside the selection, in document order. */
   interactive: string[];
   options: CaptureOptions;
+  /** Motion the MAIN world saw when the capture started. */
+  motion: MainWorldMotion | undefined;
+  /** @keyframes and transitions from the stylesheets. */
+  cssMotion: CssMotionReport;
 }
 
 export interface StyleSnapshot {
@@ -85,15 +95,21 @@ export interface StyleSnapshot {
   box: BoundingBox;
 }
 
-export type CaptureOutcome =
+export type CaptureOutcome = (
   | { ok: true; saved: "companion"; path: string }
   | { ok: true; saved: "queued"; reason: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string }
+) & {
+  /** Test builds only: raw inputs for recording fixtures. */
+  debug?: unknown;
+};
 
 export type RuntimeMessage =
   | { type: "picker:toggle" }
   | { type: "capture:submit"; submission: CaptureSubmission }
   | { type: "capture:snapshot" }
+  | { type: "capture:collect-motion"; rootSelector: string }
+  | { type: "capture:watch"; trigger: MotionPassTrigger }
   | { type: "capture:ping" }
   // Test builds only.
   | { type: "test:companion"; url?: string }

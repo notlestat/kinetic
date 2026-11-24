@@ -195,8 +195,33 @@ export const MotionEntrySchema = z.object({
 });
 export type MotionEntry = z.infer<typeof MotionEntrySchema>;
 
+/** Smooth-scroll libraries change how every scroll animation feels, so the rebuild needs their options. */
+export const SmoothScrollSchema = z.object({
+  library: z.enum(["lenis"]),
+  /** "global" when window.lenis was readable, "class" when only the html.lenis class was found. */
+  detectedBy: z.enum(["global", "class"]),
+  /** The library's options. Functions are stored as "[function]". */
+  options: z.record(z.string(), z.unknown()),
+});
+export type SmoothScroll = z.infer<typeof SmoothScrollSchema>;
+
+export const MotionSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  bySource: z.partialRecord(MotionSourceSchema, z.number().int().nonnegative()),
+  triggers: z.array(MotionTriggerSchema),
+  /** The family with the most entries: css covers transitions, keyframes and WAAPI; gsap covers ScrollTrigger. */
+  primary: z.enum(["css", "gsap", "framer-motion", "three", "lottie", "rive", "spline", "sampled", "none"]),
+  /** The motion library the rebuild should use. */
+  suggestedLibrary: z.enum(["framer-motion", "gsap", "react-three-fiber"]),
+});
+export type MotionSummary = z.infer<typeof MotionSummarySchema>;
+
 export const MotionSchema = z.object({
   entries: z.array(MotionEntrySchema),
+  smoothScroll: SmoothScrollSchema.optional(),
+  summary: MotionSummarySchema.optional(),
+  /** Motion the capture saw but could not read, in plain words. */
+  warnings: z.array(z.string()).optional(),
 });
 export type Motion = z.infer<typeof MotionSchema>;
 

@@ -9,6 +9,7 @@ import {
   postToWindow,
   type RuntimeMessage,
 } from "./messages.ts";
+import { armMainWorldWatch, requestMainWorldReport } from "./main-world-bridge.ts";
 import { Picker } from "./picker.ts";
 
 /** Test hooks (capture a selector, toggle the picker) exist only in dev and test builds. */
@@ -28,6 +29,18 @@ export function startContent(): void {
     }
     if (message.type === "capture:snapshot") {
       void snapshotCurrent().then(sendResponse, () => sendResponse(undefined));
+      return true;
+    }
+    if (message.type === "capture:collect-motion") {
+      // Works without a capture in progress, so the background can also ask after reloading the page.
+      void requestMainWorldReport(null, message.rootSelector, "motion").then(
+        (report) => sendResponse(report?.motion),
+        () => sendResponse(undefined),
+      );
+      return true;
+    }
+    if (message.type === "capture:watch") {
+      void armMainWorldWatch(message.trigger).then(sendResponse, () => sendResponse(false));
       return true;
     }
     if (message.type === "capture:ping") {

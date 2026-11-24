@@ -3,3 +3,5 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - lenis@1.3.28

@@ -1,0 +1,520 @@
+{
+ "atStart": {
+  "animations": [
+   {
+    "kind": "CSSAnimation",
+    "target": "html > body > main > section.panel > span.badge",
+    "pseudoElement": null,
+    "name": "pulse",
+    "keyframes": [
+     {
+      "offset": 0,
+      "easing": "ease-in-out",
+      "composite": "auto",
+      "transform": "scale(1)",
+      "opacity": "1",
+      "computedOffset": 0
+     },
+     {
+      "offset": 0.5,
+      "easing": "ease-in-out",
+      "composite": "auto",
+      "transform": "scale(1.08)",
+      "opacity": "0.6",
+      "computedOffset": 0.5
+     },
+     {
+      "offset": 1,
+      "easing": "ease-in-out",
+      "composite": "auto",
+      "transform": "scale(1)",
+      "opacity": "1",
+      "computedOffset": 1
+     }
+    ],
+    "timing": {
+     "duration": 1200,
+     "delay": 0,
+     "endDelay": 0,
+     "iterations": "infinite",
+     "direction": "normal",
+     "easing": "linear",
+     "fill": "none"
+    },
+    "playState": "running",
+    "inside": true
+   },
+   {
+    "kind": "CSSAnimation",
+    "target": "html > body > main > section.panel > h2.fade-in",
+    "pseudoElement": null,
+    "name": "fade-up",
+    "keyframes": [
+     {
+      "offset": 0,
+      "easing": "cubic-bezier(0.2, 0, 0, 1)",
+      "composite": "auto",
+      "transform": "translateY(16px)",
+      "opacity": "0",
+      "computedOffset": 0
+     },
+     {
+      "offset": 1,
+      "easing": "cubic-bezier(0.2, 0, 0, 1)",
+      "composite": "auto",
+      "transform": "translateY(0px)",
+      "opacity": "1",
+      "computedOffset": 1
+     }
+    ],
+    "timing": {
+     "duration": 600,
+     "delay": 100,
+     "endDelay": 0,
+     "iterations": 1,
+     "direction": "normal",
+     "easing": "linear",
+     "fill": "both"
+    },
+    "playState": "running",
+    "inside": true
+   },
+   {
+    "kind": "Animation",
+    "target": "html > body > main > section.panel > div.spinner:nth-of-type(1)",
+    "pseudoElement": null,
+    "name": "",
+    "keyframes": [
+     {
+      "offset": null,
+      "easing": "linear",
+      "composite": "auto",
+      "transform": "rotate(0deg)",
+      "computedOffset": 0
+     },
+     {
+      "offset": null,
+      "easing": "linear",
+      "composite": "auto",
+      "transform": "rotate(360deg)",
+      "computedOffset": 1
+     }
+    ],
+    "timing": {
+     "duration": 1000,
+     "delay": 0,
+     "endDelay": 0,
+     "iterations": "infinite",
+     "direction": "normal",
+     "easing": "linear",
+     "fill": "auto"
+    },
+    "playState": "running",
+    "inside": true
+   }
+  ],
+  "gsap": [],
+  "scrollTriggers": [],
+  "gsapUnreachable": false
+ },
+ "passes": [
+  {
+   "trigger": "hover",
+   "motion": {
+    "animations": [
+     {
+      "kind": "Animation",
+      "target": "html > body > main > section.panel > div.card:nth-of-type(2)",
+      "pseudoElement": null,
+      "name": "",
+      "keyframes": [
+       {
+        "offset": null,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "translateY(0px)",
+        "computedOffset": 0
+       },
+       {
+        "offset": null,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "translateY(-6px)",
+        "computedOffset": 1
+       }
+      ],
+      "timing": {
+       "duration": 250,
+       "delay": 0,
+       "endDelay": 0,
+       "iterations": 1,
+       "direction": "normal",
+       "easing": "cubic-bezier(0.3, 0, 0, 1)",
+       "fill": "forwards"
+      },
+      "playState": "finished",
+      "inside": true
+     }
+    ],
+    "gsap": [],
+    "scrollTriggers": [],
+    "gsapUnreachable": false
+   }
+  },
+  {
+   "trigger": "focus",
+   "motion": {
+    "animations": [
+     {
+      "kind": "Animation",
+      "target": "html > body > main > section.panel > div.card:nth-of-type(2)",
+      "pseudoElement": null,
+      "name": "",
+      "keyframes": [
+       {
+        "offset": null,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "translateY(0px)",
+        "computedOffset": 0
+       },
+       {
+        "offset": null,
+        "easing": "linear",
+        "composite": "auto",
+        "transform": "translateY(-6px)",
+        "computedOffset": 1
+       }
+      ],
+      "timing": {
+       "duration": 250,
+       "delay": 0,
+       "endDelay": 0,
+       "iterations": 1,
+       "direction": "normal",
+       "easing": "cubic-bezier(0.3, 0, 0, 1)",
+       "fill": "forwards"
+      },
+      "playState": "finished",
+      "inside": true
+     }
+    ],
+    "gsap": [],
+    "scrollTriggers": [],
+    "gsapUnreachable": false
+   }
+  },
+  {
+   "trigger": "hover",
+   "motion": {
+    "animations": [
+     {
+      "kind": "CSSTransition",
+      "target": "html > body > main > section.panel > button.go",
+      "pseudoElement": null,
+      "name": "background-color",
+      "keyframes": [
+       {
+        "offset": 0,
+        "easing": "linear",
+        "composite": "auto",
+        "backgroundColor": "rgb(10, 37, 64)",
+        "computedOffset": 0
+       },
+       {
+        "offset": 1,
+        "easing": "linear",
+        "composite": "auto",
+        "backgroundColor": "rgb(99, 91, 255)",
+        "computedOffset": 1
+       }
+      ],
+      "timing": {
+       "duration": 200,
+       "delay": 0,
+       "endDelay": 0,
+       "iterations": 1,
+       "direction": "normal",
+       "easing": "ease",
+       "fill": "backwards"
+      },
+      "playState": "finished",
+      "inside": true
+     }
+    ],
+    "gsap": [],
+    "scrollTriggers": [],
+    "gsapUnreachable": false
+   }
+  },
+  {
+   "trigger": "focus",
+   "motion": {
+    "animations": [],
+    "gsap": [],
+    "scrollTriggers": [],
+    "gsapUnreachable": false
+   }
+  }
+ ],
+ "css": {
+  "keyframes": {
+   "pulse": [
+    {
+     "offset": 0,
+     "values": {
+      "opacity": "1",
+      "transform": "scale(1)"
+     }
+    },
+    {
+     "offset": 0.5,
+     "values": {
+      "opacity": "0.6",
+      "transform": "scale(1.08)"
+     }
+    },
+    {
+     "offset": 1,
+     "values": {
+      "opacity": "1",
+      "transform": "scale(1)"
+     }
+    }
+   ],
+   "fade-up": [
+    {
+     "offset": 0,
+     "values": {
+      "opacity": "0",
+      "transform": "translateY(16px)"
+     }
+    },
+    {
+     "offset": 1,
+     "values": {
+      "opacity": "1",
+      "transform": "translateY(0px)"
+     }
+    }
+   ]
+  },
+  "animated": [
+   {
+    "selector": "html > body > main > section.panel > span.badge",
+    "names": [
+     "pulse"
+    ],
+    "durations": [
+     "1.2s"
+    ],
+    "delays": [
+     "0s"
+    ],
+    "iterations": [
+     "infinite"
+    ],
+    "directions": [
+     "normal"
+    ],
+    "easings": [
+     "ease-in-out"
+    ]
+   },
+   {
+    "selector": "html > body > main > section.panel > h2.fade-in",
+    "names": [
+     "fade-up"
+    ],
+    "durations": [
+     "0.6s"
+    ],
+    "delays": [
+     "0.1s"
+    ],
+    "iterations": [
+     "1"
+    ],
+    "directions": [
+     "normal"
+    ],
+    "easings": [
+     "cubic-bezier(0.2, 0, 0, 1)"
+    ]
+   }
+  ],
+  "transitions": [
+   {
+    "selector": "html > body > main > section.panel > button.go",
+    "properties": [
+     "background-color"
+    ],
+    "durations": [
+     "0.2s"
+    ],
+    "delays": [
+     "0s"
+    ],
+    "easings": [
+     "ease"
+    ]
+   }
+  ]
+ },
+ "baseline": {
+  "html > body > main > section.panel > button.go": {
+   "background-color": "rgb(10, 37, 64)",
+   "outline-color": "rgb(255, 255, 255)",
+   "outline-style": "none",
+   "outline-width": "3px"
+  }
+ },
+ "states": [
+  {
+   "name": "hover",
+   "target": "html > body > main > section.panel > div.card:nth-of-type(2)",
+   "changes": {
+    "html > body > main > section.panel > span.badge": {
+     "opacity": "0.922253",
+     "transform": "matrix(1.01555, 0, 0, 1.01555, 0, 0)"
+    },
+    "html > body > main > section.panel > h2.fade-in": {
+     "opacity": "0.309483",
+     "transform": "matrix(1, 0, 0, 1, 0, 11.0483)"
+    },
+    "html > body > main > section.panel > div.spinner:nth-of-type(1)": {
+     "transform": "matrix(0.407083, 0.913391, -0.913391, 0.407083, 0, 0)"
+    }
+   },
+   "screenshot": "states/hover-0.png"
+  },
+  {
+   "name": "focus",
+   "target": "html > body > main > section.panel > div.card:nth-of-type(2)",
+   "changes": {
+    "html > body > main > section.panel > span.badge": {
+     "opacity": "0.856499",
+     "transform": "matrix(1.0287, 0, 0, 1.0287, 0, 0)"
+    },
+    "html > body > main > section.panel > h2.fade-in": {
+     "opacity": "0.607138",
+     "transform": "matrix(1, 0, 0, 1, 0, 6.2858)"
+    },
+    "html > body > main > section.panel > div.spinner:nth-of-type(1)": {
+     "transform": "matrix(0.000169646, 1, -1, 0.000169646, 0, 0)"
+    },
+    "html > body > main > section.panel > div.card:nth-of-type(2)": {
+     "outline-color": "rgb(0, 95, 204)",
+     "outline-style": "auto",
+     "outline-width": "1px"
+    }
+   },
+   "screenshot": "states/focus-0.png"
+  },
+  {
+   "name": "active",
+   "target": "html > body > main > section.panel > div.card:nth-of-type(2)",
+   "changes": {
+    "html > body > main > section.panel > span.badge": {
+     "opacity": "0.780873",
+     "transform": "matrix(1.04383, 0, 0, 1.04383, 0, 0)"
+    },
+    "html > body > main > section.panel > h2.fade-in": {
+     "opacity": "0.763678",
+     "transform": "matrix(1, 0, 0, 1, 0, 3.78115)"
+    },
+    "html > body > main > section.panel > div.spinner:nth-of-type(1)": {
+     "transform": "matrix(-0.406773, 0.913529, -0.913529, -0.406773, 0, 0)"
+    }
+   },
+   "screenshot": "states/active-0.png"
+  },
+  {
+   "name": "hover",
+   "target": "html > body > main > section.panel > button.go",
+   "changes": {
+    "html > body > main > section.panel > span.badge": {
+     "opacity": "0.708785",
+     "transform": "matrix(1.05824, 0, 0, 1.05824, 0, 0)"
+    },
+    "html > body > main > section.panel > h2.fade-in": {
+     "opacity": "0.859646",
+     "transform": "matrix(1, 0, 0, 1, 0, 2.24566)"
+    },
+    "html > body > main > section.panel > div.spinner:nth-of-type(1)": {
+     "transform": "matrix(-0.742891, 0.669412, -0.669412, -0.742891, 0, 0)"
+    },
+    "html > body > main > section.panel > button.go": {
+     "background-color": "rgb(99, 91, 255)"
+    }
+   },
+   "screenshot": "states/hover-1.png"
+  },
+  {
+   "name": "focus",
+   "target": "html > body > main > section.panel > button.go",
+   "changes": {
+    "html > body > main > section.panel > span.badge": {
+     "opacity": "0.651684",
+     "transform": "matrix(1.06966, 0, 0, 1.06966, 0, 0)"
+    },
+    "html > body > main > section.panel > h2.fade-in": {
+     "opacity": "0.92184",
+     "transform": "matrix(1, 0, 0, 1, 0, 1.25055)"
+    },
+    "html > body > main > section.panel > div.spinner:nth-of-type(1)": {
+     "transform": "matrix(-0.951004, 0.309178, -0.309178, -0.951004, 0, 0)"
+    },
+    "html > body > main > section.panel > button.go": {
+     "outline-color": "rgb(0, 95, 204)",
+     "outline-style": "auto",
+     "outline-width": "1px"
+    }
+   },
+   "screenshot": "states/focus-1.png"
+  },
+  {
+   "name": "active",
+   "target": "html > body > main > section.panel > button.go",
+   "changes": {
+    "html > body > main > section.panel > span.badge": {
+     "opacity": "0.615441",
+     "transform": "matrix(1.07691, 0, 0, 1.07691, 0, 0)"
+    },
+    "html > body > main > section.panel > h2.fade-in": {
+     "opacity": "0.961783",
+     "transform": "matrix(1, 0, 0, 1, 0, 0.61147)"
+    },
+    "html > body > main > section.panel > div.spinner:nth-of-type(1)": {
+     "transform": "matrix(-0.994518, -0.104568, 0.104568, -0.994518, 0, 0)"
+    },
+    "html > body > main > section.panel > button.go": {
+     "background-color": "rgb(99, 91, 255)"
+    }
+   },
+   "screenshot": "states/active-1.png"
+  },
+  {
+   "name": "mobile",
+   "target": "html > body > main > section.panel",
+   "changes": {
+    "html > body > main > section.panel": {
+     "grid-template-columns": "127px 127px",
+     "grid-template-rows": "58px 88px 40px"
+    },
+    "html > body > main > section.panel > span.badge": {
+     "opacity": "0.819012",
+     "transform": "matrix(1.0362, 0, 0, 1.0362, 0, 0)"
+    },
+    "html > body > main > section.panel > h2.fade-in": {
+     "opacity": "1",
+     "transform": "matrix(1, 0, 0, 1, 0, 0)"
+    },
+    "html > body > main > section.panel > div.spinner:nth-of-type(1)": {
+     "transform": "matrix(0.865731, -0.50051, 0.50051, 0.865731, 0, 0)"
+    }
+   },
+   "screenshot": "states/mobile.png"
+  }
+ ]
+}

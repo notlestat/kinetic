@@ -17,7 +17,7 @@ const SITE = "127.0.0.1";
 test("captures the button with styles, tokens, fonts, states and screenshots", async ({ page }) => {
   await openTestPage(page, "button.html");
   const outcome = await captureSelector(page, "button.cta", "cta-button");
-  expect(outcome).toEqual({ ok: true, saved: "companion", path: `${SITE}/cta-button` });
+  expect(outcome).toMatchObject({ ok: true, saved: "companion", path: `${SITE}/cta-button` });
 
   const dir = captureDirFor(SITE, "cta-button");
   const capture = await readCaptureJson(SITE, "cta-button");
