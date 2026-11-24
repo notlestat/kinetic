@@ -130,6 +130,40 @@ function sampleKeyframes(offsets: readonly number[], values: readonly (number | 
   return out;
 }
 
+/** A value at time t, read off the samples by straight lines between them. */
+function valueAt(points: readonly { t: number; v: number }[], t: number): number {
+  const after = points.findIndex((p) => p.t >= t);
+  if (after <= 0) return (after === 0 ? points[0] : points[points.length - 1])?.v as number;
+  const a = points[after - 1] as { t: number; v: number };
+  const b = points[after] as { t: number; v: number };
+  return a.v + ((b.v - a.v) * (t - a.t)) / (b.t - a.t);
+}
+
+/**
+ * Whether every moving channel heads one way and slows down: an intro easing into
+ * place that had not quite stopped when sampling ended, not a loop. A channel heads
+ * one way when its path is no longer than its net change (5% slack for noise), and
+ * slows down when it covers under half as much in the last fifth as in the first.
+ */
+export function isSettling(times: readonly number[], channels: Readonly<Channels>): boolean {
+  const lastT = times[times.length - 1] ?? 0;
+  if (lastT <= 0) return false;
+  let moving = 0;
+  for (const values of Object.values(channels)) {
+    const points = times.flatMap((t, i) => (typeof values[i] === "number" && Number.isFinite(values[i]) ? [{ t, v: values[i] as number }] : []));
+    if (points.length < 3 || range(points.map((p) => p.v)) <= EPSILON) continue;
+    moving++;
+    let path = 0;
+    for (let i = 1; i < points.length; i++) path += Math.abs((points[i] as { v: number }).v - (points[i - 1] as { v: number }).v);
+    const net = Math.abs((points[points.length - 1] as { v: number }).v - (points[0] as { v: number }).v);
+    if (path > net * 1.05) return false;
+    const early = Math.abs(valueAt(points, lastT * 0.2) - valueAt(points, 0));
+    const late = Math.abs(valueAt(points, lastT) - valueAt(points, lastT * 0.8));
+    if (late >= early * 0.5) return false;
+  }
+  return moving > 0;
+}
+
 interface Analysis {
   timeAnimated: Set<string>;
   entries: KeyedDraft[];
@@ -192,9 +226,12 @@ function analyseTime(name: string, canvas: string, times: readonly number[], cha
     };
   }
 
-  // Still moving at the end of the window: treat as a running loop of unknown period.
+  // Still moving at the end of the window: a running loop of unknown period, unless
+  // it is easing into place, which is a one-off move that runs past the window.
   const tail = times.findIndex((t) => t >= lastT * 0.8);
   const movingAtEnd = Object.values(channels).some((values) => range(defined(values.slice(Math.max(0, tail)))) > EPSILON);
+  const settling = movingAtEnd && isSettling(times, channels);
+  const loop = movingAtEnd && !settling;
   return {
     timeAnimated,
     entries: [
@@ -203,15 +240,20 @@ function analyseTime(name: string, canvas: string, times: readonly number[], cha
         entry: {
           source: "three",
           target: canvas,
-          trigger: movingAtEnd ? "loop" : "load",
+          trigger: loop ? "loop" : "load",
           properties,
           duration: Math.round(Math.min(lastT, durationMs)),
           delay: 0,
-          easing: "linear",
-          iterations: movingAtEnd ? "infinite" : 1,
+          easing: settling ? "ease-out" : "linear",
+          iterations: loop ? "infinite" : 1,
           direction: "normal",
           confidence: "approximate",
-          raw: { object: name, sampledMs: Math.round(lastT), ...(Object.keys(rates).length ? { ratesPerSecond: rates } : {}) },
+          raw: {
+            object: name,
+            sampledMs: Math.round(lastT),
+            ...(settling ? { stillSettling: true } : {}),
+            ...(Object.keys(rates).length ? { ratesPerSecond: rates } : {}),
+          },
         },
       },
     ],

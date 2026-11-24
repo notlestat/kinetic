@@ -146,6 +146,100 @@ export function shaderSlug(name: unknown, type: string, index: number): string {
   return `${slug || "material"}-${index + 1}`;
 }
 
+/** An outline keeps at most this many objects. */
+export const MAX_OUTLINE_NODES = 2000;
+
+interface Vec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+/** The parts of a three.js object an outline reads. */
+export interface OutlineSource {
+  type: string;
+  name?: string;
+  visible?: boolean;
+  position: Vec3;
+  rotation: Vec3;
+  scale: Vec3;
+  geometry?: { type: string; parameters?: unknown };
+  material?: { type: string; name?: string } | readonly { type: string; name?: string }[];
+  children: readonly OutlineSource[];
+}
+
+const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+const vec = (v: Vec3): [number, number, number] => [r4(v.x), r4(v.y), r4(v.z)];
+
+/** Geometry parameters with plain values only: radius, segments and the like. */
+function plainParameters(parameters: unknown): Json | undefined {
+  if (!isObject(parameters)) return undefined;
+  const out: Json = {};
+  for (const [key, value] of Object.entries(parameters)) {
+    if (typeof value === "number" || typeof value === "string" || typeof value === "boolean") out[key] = value;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * scene.json when three.js cannot serialise the scene, which happens when a site's own
+ * classes override toJSON. Objects with their transforms, geometry type and parameters
+ * and material names, read field by field so nothing the site overrides is called.
+ */
+export function sceneOutline(root: OutlineSource, reason: string): Json {
+  let count = 0;
+  const visit = (object: OutlineSource): Json | undefined => {
+    if (count >= MAX_OUTLINE_NODES) return undefined;
+    count++;
+    const node: Json = { type: object.type, position: vec(object.position), rotation: vec(object.rotation), scale: vec(object.scale) };
+    if (object.name) node.name = object.name;
+    if (object.visible === false) node.visible = false;
+    if (object.geometry) {
+      const parameters = plainParameters(object.geometry.parameters);
+      node.geometry = { type: object.geometry.type, ...(parameters ? { parameters } : {}) };
+    }
+    if (object.material) {
+      const list = Array.isArray(object.material) ? object.material : [object.material];
+      node.materials = list.map((m: { type: string; name?: string }) => (m.name ? { type: m.type, name: m.name } : { type: m.type }));
+    }
+    const children = object.children.map(visit).filter((child): child is Json => child !== undefined);
+    if (children.length > 0) node.children = children;
+    return node;
+  };
+  const object = visit(root);
+  return {
+    metadata: {
+      type: "KineticSceneOutline",
+      note: "three.js could not serialise this scene, so this is an outline: objects, transforms, geometry and material names.",
+      reason,
+      ...(count >= MAX_OUTLINE_NODES ? { truncatedAt: MAX_OUTLINE_NODES } : {}),
+    },
+    object,
+  };
+}
+
+/**
+ * A scene holding nothing but one childless mesh: a full-screen post-processing pass.
+ * The postprocessing library wraps each pass's quad in its own Scene, and a blur
+ * draws that scene several times per frame, more often than the real scene.
+ */
+export function isFullScreenPass(scene: { children: readonly { isMesh?: boolean; children: readonly unknown[] }[] }): boolean {
+  const [only] = scene.children;
+  return scene.children.length === 1 && only?.isMesh === true && only.children.length === 0;
+}
+
+export interface SceneTally {
+  count: number;
+  pass: boolean;
+}
+
+/** Whether a scene should replace the current main scene: a real scene beats any pass, then the most drawn wins. */
+export function beatsMainScene(candidate: SceneTally, current: SceneTally | undefined): boolean {
+  if (!current) return true;
+  if (candidate.pass !== current.pass) return !candidate.pass;
+  return candidate.count > current.count;
+}
+
 /** A transform recorded from one render: position, rotation (Euler XYZ, radians) and scale. */
 export interface TransformSample {
   position: [number, number, number];

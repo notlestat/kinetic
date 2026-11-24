@@ -36,7 +36,8 @@ test("captures a three.js scene: scene.json, shaders, camera path and renderer s
   expect(three.lights?.find((l) => l.name === "Key")).toMatchObject({ type: "DirectionalLight", intensity: 2, castShadow: true, position: [3, 5, 2] });
   expect(three.camera).toMatchObject({ type: "PerspectiveCamera", fov: 50 });
   expect(three.camera?.target.map((n) => Math.round(n * 10) / 10)).toEqual([0, 0, 0]);
-  expect(three.postProcessing).toEqual(expect.arrayContaining(["RenderPass", "OutputShader"]));
+  // The blur pass is drawn three times a frame, but the real scene stays the main one.
+  expect(three.postProcessing).toEqual(expect.arrayContaining(["RenderPass", "OutputShader", "BlurMaterial"]));
 
   // scene.json keeps geometry parameters and leaves out the 15000-number point cloud.
   expect(three.sceneFile).toBe("three/scene.json");
@@ -56,11 +57,13 @@ test("captures a three.js scene: scene.json, shaders, camera path and renderer s
   expect(index[0]).toMatchObject({ name: "HeroGlow", usedBy: ["Hero"], uniforms: { uColor: "#635bff", uResolution: [1, 1] } });
 
   // The camera path: per-render samples while idle, and one sample per scroll step.
-  const cameraPath = await readJson<{ frames: { camera: { position: number[] } }[]; scroll?: { steps: { progress: number }[] } }>(
+  const cameraPath = await readJson<{ frames: { camera: { position: number[]; fov?: number } }[]; scroll?: { steps: { progress: number }[] } }>(
     "three-stage",
     "three/camera-path.json",
   );
   expect(cameraPath.frames.length).toBeGreaterThan(10);
+  // Every sample is the real perspective camera, never the blur pass's orthographic one.
+  expect(cameraPath.frames.every((f) => f.camera.fov === 50)).toBe(true);
   // The camera block is read after the scroll pass, once the scene is back where the capture started.
   expect(three.camera?.position).toEqual(cameraPath.frames[0]?.camera.position);
   expect(cameraPath.scroll?.steps.length).toBe(9);
@@ -96,7 +99,13 @@ test("captures a React Three Fiber scene and marks it as R3F", async ({ page }) 
   expect(spin).toMatchObject({ trigger: "loop", iterations: "infinite" });
   expect(spin?.duration).toBeGreaterThan(5236 * 0.95);
   expect(spin?.duration).toBeLessThan(5236 * 1.05);
-  expect(await fileExists(path.join(captureDirFor(SITE, "r3f-stage"), "three/scene.json"))).toBe(true);
+  // The badge's material breaks scene.toJSON(), so scene.json is an outline that still names every object.
+  const scene = await readJson<{ metadata: { type: string }; object: unknown }>("r3f-stage", "three/scene.json");
+  expect(scene.metadata.type).toBe("KineticSceneOutline");
+  const outline = JSON.stringify(scene.object);
+  expect(outline).toContain('"name":"Box"');
+  expect(outline).toContain('"geometry":{"type":"BoxGeometry","parameters":{"width":1.2,"height":1.2,"depth":1.2');
+  expect(outline).toContain('"name":"Badge"');
 });
 
 test("saves a bundled lottie-web animation's JSON and its timing", async ({ page }) => {

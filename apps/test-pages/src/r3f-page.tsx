@@ -1,9 +1,18 @@
-// A React Three Fiber scene: a box that spins at a steady rate under two lights.
+// A React Three Fiber scene: a box that spins at a steady rate under two lights,
+// and a badge whose material breaks three.js's scene.toJSON() the way some sites'
+// own classes do, so Kinetic has to fall back to an outline of the scene.
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { createRoot } from "react-dom/client";
-import type { Mesh } from "three";
+import { type Mesh, MeshBasicMaterial } from "three";
+
+class SiteMaterial extends MeshBasicMaterial {
+  override toJSON() {
+    return undefined as never;
+  }
+}
+const badgeMaterial = new SiteMaterial({ color: "#00d4ff" });
 
 function SpinningBox() {
   const ref = useRef<Mesh>(null);
@@ -25,6 +34,9 @@ function Stage() {
         <ambientLight name="Fill" intensity={0.5} />
         <directionalLight name="Key" position={[2, 4, 3]} intensity={1.5} />
         <SpinningBox />
+        <mesh name="Badge" position={[1.5, 0, 0]} material={badgeMaterial}>
+          <planeGeometry args={[0.5, 0.5]} />
+        </mesh>
       </Canvas>
     </section>
   );

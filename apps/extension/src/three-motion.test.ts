@@ -1,7 +1,7 @@
 import { MotionEntrySchema } from "@kinetic/schema";
 import { describe, expect, it } from "vitest";
 import { mergeMotion } from "./motion-normalise.ts";
-import { fromCameraPath, linearFit, unwrapAngles } from "./three-motion.ts";
+import { fromCameraPath, isSettling, linearFit, unwrapAngles } from "./three-motion.ts";
 import type { CameraPath, CameraSample, TransformSample } from "./three-scene.ts";
 
 const still = (overrides: Partial<TransformSample> = {}): TransformSample => ({ position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], ...overrides });
@@ -60,6 +60,44 @@ describe("fromCameraPath", () => {
     expect(cam?.properties.map((p) => p.name).sort()).toEqual(["position.y", "position.z"]);
     expect(cam?.properties.find((p) => p.name === "position.z")?.keyframes.at(-1)).toEqual({ offset: 1, value: 3 });
     expect(of("Ground")).toHaveLength(0);
+  });
+});
+
+describe("motion still running when sampling ends", () => {
+  /** 3 s at 60 fps of one object whose x is f(t in seconds). */
+  const pathOf = (x: (seconds: number) => number): CameraPath => ({
+    canvas: "#scene",
+    durationMs: 3000,
+    frames: Array.from({ length: 181 }, (_, i) => {
+      const t = (i * 1000) / 60;
+      return { t, camera: camera(6), objects: { Thing: still({ position: [x(t / 1000), 0, 0] }) } };
+    }),
+  });
+  const entryFor = (x: (seconds: number) => number) => mergeMotion(fromCameraPath(pathOf(x)))[0];
+
+  it("treats an intro easing into place as a one-off ease-out, not a loop", () => {
+    // Eases from 14 towards 12 and is still a little short of it after 3 s, like an intro camera move.
+    const intro = entryFor((s) => 12 + 2 * Math.exp(-s / 1.2));
+    expect(intro).toMatchObject({ trigger: "load", iterations: 1, easing: "ease-out", raw: { stillSettling: true } });
+  });
+
+  it("keeps a sway that turns back as a loop", () => {
+    const sway = entryFor((s) => Math.sin(s * 2));
+    expect(sway).toMatchObject({ trigger: "loop", iterations: "infinite", easing: "linear" });
+  });
+
+  it("keeps a steady drift as a loop", () => {
+    const drift = entryFor((s) => s * 0.5);
+    expect(drift).toMatchObject({ trigger: "loop", iterations: "infinite" });
+  });
+
+  it("needs every moving channel to settle", () => {
+    const times = [0, 500, 1000, 1500, 2000, 2500, 3000];
+    const easing = times.map((t) => 2 * Math.exp(-t / 1000));
+    const steady = times.map((t) => t / 1000);
+    expect(isSettling(times, { "position.x": easing })).toBe(true);
+    expect(isSettling(times, { "position.x": easing, "position.y": steady })).toBe(false);
+    expect(isSettling(times, { "position.x": times.map(() => 1) })).toBe(false);
   });
 });
 

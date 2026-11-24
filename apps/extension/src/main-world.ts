@@ -32,8 +32,11 @@ import {
 } from "./react-tree.ts";
 import { uniqueSelector } from "./selector.ts";
 import {
+  beatsMainScene,
   type CameraPath,
   type CameraSample,
+  isFullScreenPass,
+  sceneOutline,
   shaderSlug,
   shadowMapTypeName,
   stripSceneJson,
@@ -905,6 +908,7 @@ interface ThreeObject {
   scale: Vec3Like;
   matrixWorld: { elements: number[] };
   material?: ThreeMaterial | ThreeMaterial[];
+  geometry?: { type: string; parameters?: unknown };
   color?: ThreeColor;
   intensity?: number;
   castShadow?: boolean;
@@ -1073,7 +1077,7 @@ interface RenderRecording {
  */
 async function recordRenders(renderer: ThreeRenderer, canvasSelector: string): Promise<RenderRecording | undefined> {
   const original = renderer.render;
-  const perScene = new Map<ThreeObject, { camera: ThreeObject; count: number; tracked: [string, ThreeObject][] }>();
+  const perScene = new Map<ThreeObject, { camera: ThreeObject; count: number; pass: boolean; tracked: [string, ThreeObject][] }>();
   const frames: CameraPath["frames"] = [];
   const passes: string[] = [];
   let main: ThreeObject | undefined;
@@ -1087,19 +1091,27 @@ async function recordRenders(renderer: ThreeRenderer, canvasSelector: string): P
       if (s?.isObject3D && c?.isCamera) {
         let entry = perScene.get(s);
         if (s.isScene && !entry) {
-          entry = { camera: c, count: 0, tracked: trackedObjects(s) };
+          entry = { camera: c, count: 0, pass: isFullScreenPass(s), tracked: trackedObjects(s) };
           perScene.set(s, entry);
         }
-        if (entry && s.isScene && entry.tracked.length + 1 > 0) {
+        if (entry) {
           entry.count++;
           entry.camera = c;
-          // The scene drawn most often is the main one; samples follow it.
-          if (!main || entry.count > (perScene.get(main)?.count ?? 0)) main = s;
+          // The main scene is the most drawn real scene. When it changes, samples
+          // so far belong to another scene and camera, so they start again.
+          if (s !== main && beatsMainScene(entry, main ? perScene.get(main) : undefined)) {
+            main = s;
+            frames.length = 0;
+            started = undefined;
+            latest = undefined;
+          }
           if (s === main) {
             const now = performance.now();
             started ??= now;
             latest = { camera: cameraSample(c), objects: sampleObjects(entry.tracked) };
-            if (frames.length < MAX_FRAMES && phase === "time") frames.push({ t: Math.round(now - started), ...latest });
+            const t = Math.round(now - started);
+            // A scene drawn twice in one frame (a depth pass, say) gives one sample.
+            if (frames.length < MAX_FRAMES && phase === "time" && frames.at(-1)?.t !== t) frames.push({ t, ...latest });
             if (renderer.getRenderTarget?.()) pushPass("RenderPass");
           }
         }
@@ -1194,8 +1206,16 @@ addCollector("three", async ({ root, mode, report }) => {
     report.files.push({ path: "three/scene.json", text: JSON.stringify(json) });
     block.sceneFile = "three/scene.json";
     if (stripped.length > 0) block.stripped = stripped;
-  } catch {
-    // A scene with cyclic userData cannot be serialised; the rest of the block still helps.
+  } catch (error) {
+    // Cyclic userData, or a site class whose toJSON returns nothing, breaks three.js's
+    // serialiser. An outline still gives the rebuild the scene's structure.
+    try {
+      const reason = error instanceof Error ? error.message : String(error);
+      report.files.push({ path: "three/scene.json", text: JSON.stringify(sceneOutline(scene, reason)) });
+      block.sceneFile = "three/scene.json";
+    } catch {
+      // The rest of the block still helps.
+    }
   }
 
   // Shaders from ShaderMaterial and RawShaderMaterial, with an index of their uniforms.
