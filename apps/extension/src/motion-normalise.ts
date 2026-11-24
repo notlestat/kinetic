@@ -9,6 +9,7 @@ import type { Motion, MotionEntry, MotionTrigger, State } from "@kinetic/schema"
 import { gsapEaseToBezier, parseCssEasing } from "@kinetic/schema/easing";
 import { summariseMotion } from "@kinetic/schema/motion-summary";
 import { camelToKebab, listItem, parseCssTime } from "./css-list.ts";
+import { fromFramerRecords } from "./framer-motion.ts";
 import type {
   AnimationRecord,
   CssMotionReport,
@@ -347,6 +348,31 @@ export function mergeGsapRecords(
   return [...byId.values()];
 }
 
+/**
+ * Framer Motion runs opacity, filter and clip-path through WAAPI, so the watcher
+ * also sees those animations. The prop-based entry says more (variants, springs),
+ * so a WAAPI draft on a Framer target whose values a Framer entry covers is dropped.
+ */
+function framerOwned(framer: readonly KeyedDraft[]): (draft: KeyedDraft) => boolean {
+  const covered = new Map<string, Set<string>>();
+  for (const { entry } of framer) {
+    const names = covered.get(entry.target) ?? new Set<string>();
+    for (const p of entry.properties) names.add(camelToKebab(p.name));
+    covered.set(entry.target, names);
+  }
+  return ({ entry }) => {
+    if (entry.source !== "waapi") return false;
+    const names = covered.get(entry.target);
+    return !!names && entry.properties.every((p) => names.has(p.name) || (p.name === "transform" && hasTransform(names)));
+  };
+}
+
+const FRAMER_TRANSFORMS = ["x", "y", "z", "scale", "scale-x", "scale-y", "rotate", "rotate-x", "rotate-y", "rotate-z", "skew", "skew-x", "skew-y"];
+
+function hasTransform(names: Set<string>): boolean {
+  return FRAMER_TRANSFORMS.some((n) => names.has(n));
+}
+
 function present<T>(value: T | null): value is T {
   return value !== null;
 }
@@ -366,11 +392,19 @@ export function buildMotion(inputs: MotionInputs): Motion {
     ...inputs.passes.flatMap((p) => p.motion?.scrollTriggers ?? []),
   ];
 
+  const framer = fromFramerRecords(startMotion?.framer ?? []);
+  const waapiFromFramer = framerOwned(framer);
+
   // Most trusted first: animations real input started, then those already running, then GSAP, then stylesheets.
+  // Framer Motion props come before stylesheets but after live animations, which they never share a key with.
   const entries = mergeMotion(
-    passAnimations.filter(present),
-    (startMotion?.animations ?? []).map((record) => fromAnimationRecord(record, triggerForRunning(record))).filter(present),
+    passAnimations.filter(present).filter((d) => !waapiFromFramer(d)),
+    (startMotion?.animations ?? [])
+      .map((record) => fromAnimationRecord(record, triggerForRunning(record)))
+      .filter(present)
+      .filter((d) => !waapiFromFramer(d)),
     fromGsapRecords(gsap, scrollTriggers),
+    framer,
     fromCssReport(inputs.css, inputs.baseline, inputs.states),
   );
 

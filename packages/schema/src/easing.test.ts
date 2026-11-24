@@ -54,3 +54,14 @@ describe("bezierAt", () => {
     expect(bezierAt([0.42, 0, 0.58, 1], 0.25)).toBeCloseTo(0.1291, 3);
   });
 });
+
+describe("springDuration", () => {
+  it("estimates settle time for underdamped and overdamped springs", async () => {
+    const { springDuration } = await import("./easing.ts");
+    // Framer Motion's default spring (stiffness 500, damping 25) settles in about 370 ms.
+    expect(springDuration(500, 25)).toBeGreaterThan(330);
+    expect(springDuration(500, 25)).toBeLessThan(410);
+    expect(springDuration(100, 40)).toBeGreaterThan(springDuration(100, 20));
+    expect(springDuration(0, 10)).toBe(0);
+  });
+});

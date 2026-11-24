@@ -2,6 +2,7 @@
 // motion-normalise.ts turns them into MotionEntry objects.
 
 import type { SmoothScroll } from "@kinetic/schema";
+import type { FramerRecord } from "./framer-motion.ts";
 
 export type KeyframeRecord = Record<string, string | number | null>;
 
@@ -121,6 +122,8 @@ export interface MainWorldMotion {
   /** window.gsapVersions is set but window.gsap is not: a bundled GSAP that cannot be read. */
   gsapUnreachable: boolean;
   smoothScroll: SmoothScroll | undefined;
+  /** Framer Motion components in the selection, read from React fiber props. Missing in older fixtures. */
+  framer?: FramerRecord[];
 }
 
 /** CSS motion read from computed styles and stylesheets in the content script. */

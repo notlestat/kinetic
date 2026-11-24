@@ -2,10 +2,27 @@
 // must never throw into page code: wrap every hook in try/catch, and never change
 // what the page renders.
 
-import type { SmoothScroll } from "@kinetic/schema";
+import type { Framework, SmoothScroll } from "@kinetic/schema";
+import { sanitizeValue } from "./component-props.ts";
+import { type DomChild, splitFromComponents, splitFromDom } from "./component-split.ts";
+import { type FlatComponent, flattenTree, type TreeNode, toFrameworkComponents } from "./component-tree.ts";
+import { detectFrameworks } from "./framework-detect.ts";
+import { collectFramerRecords } from "./framer-motion.ts";
 import { isKineticMessage, type MainWorldReport, postToWindow, ROOT_ATTRIBUTE } from "./messages.ts";
 import { type AnimationRecord, type GsapRecord, readAnimationRecord, type ScrollTriggerRecord } from "./motion-records.ts";
+import {
+  containerFiber,
+  currentHostRoot,
+  type FiberLike,
+  fiberFromNode,
+  findHostFiber,
+  HOST_ROOT,
+  hostRootOf,
+  readReactTree,
+  startFiber,
+} from "./react-tree.ts";
 import { uniqueSelector } from "./selector.ts";
+import { type InstanceLike, readVue2Tree, readVue3Tree, type VNodeLike, type Vue2InstanceLike, vue2Ancestor } from "./vue-tree.ts";
 
 /**
  * "full" runs when the user captures. "motion" runs during the motion pass,
@@ -50,7 +67,12 @@ export function startMainWorld(): void {
   } catch {
     // Never break the site.
   }
-  const installers = [installBridge, () => installAnimationWatcher(loadCapture), () => installGsapLoadRecording(loadCapture)];
+  const installers = [
+    installReactHook,
+    installBridge,
+    () => installAnimationWatcher(loadCapture),
+    () => installGsapLoadRecording(loadCapture),
+  ];
   for (const install of installers) {
     try {
       install();
@@ -88,7 +110,7 @@ export function sanitize(value: unknown, depth = 0): unknown {
 }
 
 function motionOf(report: MainWorldReport) {
-  report.motion ??= { animations: [], gsap: [], scrollTriggers: [], gsapUnreachable: false, smoothScroll: undefined };
+  report.motion ??= { animations: [], gsap: [], scrollTriggers: [], gsapUnreachable: false, smoothScroll: undefined, framer: [] };
   return report.motion;
 }
 
@@ -603,4 +625,218 @@ addCollector("lenis", ({ mode, report }) => {
     smoothScroll = { library: "lenis", detectedBy: "class", options: {} };
   }
   motion.smoothScroll = smoothScroll;
+});
+
+// ─── React: __REACT_DEVTOOLS_GLOBAL_HOOK__ ────────────────────────────────────
+// React looks for this hook when it loads and registers each renderer with it.
+// When React DevTools (or another tool) already installed one, Kinetic only reads
+// it. Otherwise Kinetic installs a minimal hook that records renderers and fiber
+// roots and does nothing else. Caveat: if Kinetic's hook loads before the React
+// DevTools extension's, DevTools sees an existing hook and stays inactive on that
+// page; disable Kinetic on the site to use DevTools there.
+
+/** Marks Kinetic's own hook, so the framework section can say which hook it read. */
+const KINETIC_HOOK_MARK = "__kinetic";
+
+function installReactHook(): void {
+  if ((window as { __REACT_DEVTOOLS_GLOBAL_HOOK__?: unknown }).__REACT_DEVTOOLS_GLOBAL_HOOK__ !== undefined) return;
+  const renderers = new Map<number, unknown>();
+  const roots = new Map<number, Set<unknown>>();
+  let nextId = 1;
+  const hook = {
+    [KINETIC_HOOK_MARK]: true,
+    renderers,
+    supportsFiber: true,
+    inject(renderer: unknown): number {
+      const id = nextId++;
+      renderers.set(id, renderer);
+      roots.set(id, new Set());
+      return id;
+    },
+    onCommitFiberRoot(id: number, root: { current?: { memoizedState?: { element?: unknown } | null } } | null): void {
+      try {
+        const set = roots.get(id);
+        if (!set || !root) return;
+        // An unmounted root commits with no element.
+        if (root.current?.memoizedState?.element == null) set.delete(root);
+        else set.add(root);
+      } catch {
+        // Never break the site.
+      }
+    },
+    onCommitFiberUnmount(): void {},
+    onPostCommitFiberRoot(): void {},
+    onScheduleFiberRoot(): void {},
+    setStrictMode(): void {},
+    checkDCE(): void {},
+    getFiberRoots(id: number): Set<unknown> {
+      return roots.get(id) ?? new Set();
+    },
+  };
+  Object.defineProperty(window, "__REACT_DEVTOOLS_GLOBAL_HOOK__", {
+    value: hook,
+    configurable: true,
+    enumerable: false,
+    writable: true,
+  });
+}
+
+function reactHookState(): NonNullable<Framework["hook"]> {
+  const hook = (window as { __REACT_DEVTOOLS_GLOBAL_HOOK__?: Record<string, unknown> }).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+  if (!hook || typeof hook !== "object") return "none";
+  return hook[KINETIC_HOOK_MARK] === true ? "kinetic" : "react-devtools";
+}
+
+// ─── framework: component tree, Framer Motion props, suggested split ─────────
+// React: from the selected node's fiber (__reactFiber$), in the current tree.
+// Vue 3: from the app container's root vnode (container._vnode), which production
+// builds keep; Vue 2: from __vue__ instances. Framework detection covers React,
+// Next.js, Vue, Nuxt, Svelte and Astro islands.
+
+/** Prop values only the page can describe: elements become selectors, other nodes and events placeholders. */
+function describeHostValue(value: object): string | undefined {
+  if (value instanceof Element) return uniqueSelector(value);
+  if (value instanceof Node || value === window) return "[node]";
+  if (value instanceof Event) return "[event]";
+  return undefined;
+}
+
+/** Framer Motion props need depth: variants → label → transition → per-value transition. */
+function copyMotionProps(value: unknown): unknown {
+  return sanitizeValue(value, { maxDepth: 6, maxKeys: 40, maxItems: 30, maxString: 300, describe: describeHostValue });
+}
+
+/** The selection's own element and up to `limit` descendants, in document order. */
+function nodesIn(root: Element, limit: number): Element[] {
+  const out: Element[] = [root];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+  for (let node = walker.nextNode(); node && out.length < limit; node = walker.nextNode()) out.push(node as Element);
+  return out;
+}
+
+function reactRoots(root: Element): TreeNode<Element>[] | undefined {
+  const isInside = (node: unknown): node is Element => inside(root, node);
+  let anyFiber: FiberLike | undefined;
+  for (const el of nodesIn(root, 3000)) {
+    anyFiber = fiberFromNode(el) ?? containerFiber(el);
+    if (anyFiber) break;
+  }
+  // The selection may sit inside a React root without a fiber of its own (a portal target, a static wrapper).
+  for (let el: Element | null = root.parentElement; !anyFiber && el; el = el.parentElement) {
+    anyFiber = fiberFromNode(el) ?? containerFiber(el);
+  }
+  if (!anyFiber) return undefined;
+  const hostRoot = anyFiber.tag === HOST_ROOT ? anyFiber : hostRootOf(anyFiber);
+  if (!hostRoot) return undefined;
+  const current = currentHostRoot(hostRoot);
+  const options = { isInside, isRoot: (node: unknown) => node === root, describe: describeHostValue };
+  const from = findHostFiber(current, isInside);
+  return readReactTree(from ? startFiber(from, options) : current, options);
+}
+
+type VueContainer = Element & { __vue_app__?: unknown; _vnode?: VNodeLike };
+
+function vueRoots(root: Element): { roots: TreeNode<Element>[]; isInside: (el: Element) => boolean } | undefined {
+  const isElement = (node: unknown): node is Element => node instanceof Element;
+  const options = { isElement, describe: describeHostValue };
+  const insideRoot = (el: Element) => inside(root, el);
+
+  // Vue 3: the app container is the selection, an ancestor, or inside it.
+  let container: VueContainer | null = null;
+  for (let el: Element | null = root; el && !container; el = el.parentElement) {
+    if ((el as VueContainer).__vue_app__) container = el as VueContainer;
+  }
+  container ??= Array.from(document.querySelectorAll<VueContainer>("[data-v-app]")).find((el) => inside(root, el) && el.__vue_app__) ?? null;
+  if (container?._vnode) return { roots: readVue3Tree(container._vnode, options), isInside: insideRoot };
+
+  // Vue 3 development builds without a reachable container: walk up from the element's instance.
+  const instance = nodesIn(root, 500)
+    .map((el) => (el as { __vueParentComponent?: InstanceLike }).__vueParentComponent)
+    .find(Boolean);
+  if (instance) {
+    let top: InstanceLike = instance;
+    while (top.parent) top = top.parent;
+    if (top.vnode) return { roots: readVue3Tree(top.vnode, options), isInside: insideRoot };
+  }
+
+  // Vue 2: __vue__ on the component's root element. A component owns only its $el, so an ancestor component
+  // whose $el contains the selection counts as rendering into it.
+  let vm: Vue2InstanceLike | undefined;
+  for (let el: Element | null = root; el && !vm; el = el.parentElement) vm = (el as { __vue__?: Vue2InstanceLike }).__vue__;
+  vm ??= nodesIn(root, 500)
+    .map((el) => (el as { __vue__?: Vue2InstanceLike }).__vue__)
+    .find(Boolean);
+  if (vm) {
+    return { roots: readVue2Tree(vue2Ancestor(vm, 2), options), isInside: (el) => insideRoot(el) || el.contains(root) };
+  }
+  return undefined;
+}
+
+const SKIPPED_TAGS = new Set(["script", "style", "template", "noscript", "kinetic-picker"]);
+
+/** Element children of el for the DOM split. Looks inside an element only when it is a lone wrapper. */
+function domChildren(el: Element, depth = 0): DomChild[] {
+  const children = Array.from(el.children)
+    .filter((c) => !SKIPPED_TAGS.has(c.localName))
+    .slice(0, 60);
+  const out = children.map((c): DomChild => {
+    const r = c.getBoundingClientRect();
+    return {
+      selector: uniqueSelector(c),
+      tag: c.localName,
+      classes: Array.from(c.classList),
+      box: { x: r.x + window.scrollX, y: r.y + window.scrollY, width: r.width, height: r.height },
+    };
+  });
+  const only = out[0];
+  if (out.length === 1 && only && depth < 4) only.children = domChildren(children[0] as Element, depth + 1);
+  return out;
+}
+
+function frameworkProbe(root: Element) {
+  const keyed = (el: Element) => Object.keys(el).some((k) => k.startsWith("__reactFiber$") || k.startsWith("__reactContainer$"));
+  const sample = [...nodesIn(root, 300), ...(document.body ? nodesIn(document.body, 300) : [])];
+  const svelteEl = document.querySelector('[class*="svelte-"]');
+  return {
+    global: (name: string) => (window as unknown as Record<string, unknown>)[name],
+    query: (selector: string) => document.querySelector(selector),
+    reactNodeFound: sample.some(keyed),
+    svelteClassFound: !!svelteEl && /(^|\s)svelte-[a-z0-9]+(\s|$)/.test(svelteEl.getAttribute("class") ?? ""),
+    generator: document.querySelector('meta[name="generator"]')?.getAttribute("content") ?? null,
+  };
+}
+
+addCollector("framework", ({ root, mode, report }) => {
+  if (mode !== "full") return;
+  const detected = detectFrameworks(frameworkProbe(root));
+  let kind: Framework["kind"] = "none";
+  let flat: FlatComponent<Element>[] = [];
+
+  const react = reactRoots(root);
+  if (react) {
+    const isInside = (el: Element) => inside(root, el);
+    flat = flattenTree(react, { idPrefix: "react", isInside, selectorFor: uniqueSelector });
+    if (flat.length > 0) {
+      kind = "react";
+      motionOf(report).framer = collectFramerRecords(react, isInside, uniqueSelector, copyMotionProps);
+    }
+  }
+  if (kind === "none") {
+    const vue = vueRoots(root);
+    if (vue) {
+      flat = flattenTree(vue.roots, { idPrefix: "vue", isInside: vue.isInside, selectorFor: uniqueSelector });
+      if (flat.length > 0) kind = "vue";
+    }
+  }
+
+  const components = toFrameworkComponents(flat);
+  let suggestedSplit = splitFromComponents(components);
+  if (suggestedSplit.length === 0) suggestedSplit = splitFromDom(domChildren(root));
+  report.sections.framework = {
+    kind,
+    components,
+    ...(suggestedSplit.length > 0 ? { suggestedSplit } : {}),
+    detected,
+    ...(detected.some((d) => d.name === "react") ? { hook: reactHookState() } : {}),
+  };
 });

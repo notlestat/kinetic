@@ -245,10 +245,21 @@ export const SuggestedSplitSchema = z.object({
   domNodes: z.array(z.string()),
 });
 
+/** A framework or meta-framework found on the page, e.g. { name: "next", version: "15.1.0" }. */
+export const DetectedFrameworkSchema = z.object({
+  name: z.enum(["react", "next", "vue", "nuxt", "svelte", "astro"]),
+  version: z.string().optional(),
+});
+export type DetectedFramework = z.infer<typeof DetectedFrameworkSchema>;
+
 export const FrameworkSchema = z.object({
   kind: z.enum(["react", "vue", "none"]),
   components: z.array(FrameworkComponentSchema),
   suggestedSplit: z.array(SuggestedSplitSchema).optional(),
+  /** Every framework found on the page, not only the one the component tree came from. */
+  detected: z.array(DetectedFrameworkSchema).optional(),
+  /** "react-devtools" when the real React DevTools hook was read, "kinetic" when Kinetic's own hook was installed. */
+  hook: z.enum(["react-devtools", "kinetic", "none"]).optional(),
 });
 export type Framework = z.infer<typeof FrameworkSchema>;
 

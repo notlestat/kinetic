@@ -109,3 +109,27 @@ export function bezierAt([x1, y1, x2, y2]: Bezier, x: number): number {
   }
   return sampleY(t);
 }
+
+/** Framer Motion's named eases, as Framer Motion itself maps them to cubic-bezier for WAAPI. */
+export const FRAMER_NAMED_EASINGS: Readonly<Record<string, Bezier | "linear">> = {
+  linear: "linear",
+  easeIn: [0.42, 0, 1, 1],
+  easeOut: [0, 0, 0.58, 1],
+  easeInOut: [0.42, 0, 0.58, 1],
+  circIn: [0, 0.65, 0.55, 1],
+  circOut: [0.55, 0, 1, 0.45],
+  backIn: [0.31, 0.01, 0.66, -0.59],
+  backOut: [0.33, 1.53, 0.69, 0.99],
+};
+
+/**
+ * Roughly how long a spring takes to settle within 1% of its target, in ms.
+ * Used to give spring transitions a duration; the spring values stay in the easing.
+ */
+export function springDuration(stiffness: number, damping: number, mass = 1): number {
+  const omega = Math.sqrt(stiffness / mass);
+  const zeta = damping / (2 * Math.sqrt(stiffness * mass));
+  if (!Number.isFinite(omega) || omega <= 0 || !Number.isFinite(zeta) || zeta <= 0) return 0;
+  const seconds = zeta < 1 ? Math.log(100) / (zeta * omega) : (Math.log(100) * (zeta + Math.sqrt(zeta * zeta - 1))) / omega;
+  return Math.round(seconds * 1000);
+}

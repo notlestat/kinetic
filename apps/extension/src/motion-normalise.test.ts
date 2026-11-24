@@ -234,3 +234,45 @@ describe("mergeMotion", () => {
     ]);
   });
 });
+
+describe("buildMotion with Framer Motion records", () => {
+  const waapiOpacity: AnimationRecord = {
+    kind: "Animation",
+    target: "div.box",
+    pseudoElement: null,
+    name: "",
+    keyframes: [
+      { offset: 0, opacity: "0", computedOffset: 0, easing: "linear", composite: "auto" },
+      { offset: 1, opacity: "1", computedOffset: 1, easing: "linear", composite: "auto" },
+    ],
+    timing: { duration: 300, delay: 0, endDelay: 0, iterations: 1, direction: "normal", easing: "cubic-bezier(0.25, 0.1, 0.35, 1)", fill: "both" },
+    playState: "finished",
+    inside: true,
+  };
+  const inputs: MotionInputs = {
+    atStart: {
+      animations: [waapiOpacity],
+      gsap: [],
+      scrollTriggers: [],
+      gsapUnreachable: false,
+      smoothScroll: undefined,
+      framer: [{ target: "div.box", component: "motion.div", props: { initial: { opacity: 0 }, animate: { opacity: 1 } }, parent: null, childIndex: 0 }],
+    },
+    passes: [],
+    css: { keyframes: {}, animated: [], transitions: [] },
+    baseline: {},
+    states: [],
+  };
+
+  it("keeps the Framer entry and drops the WAAPI animation Framer ran for it", () => {
+    const motion = buildMotion(inputs);
+    expect(motion.entries.map((e) => e.source)).toEqual(["framer-motion"]);
+    expect(motion.summary).toMatchObject({ primary: "framer-motion", suggestedLibrary: "framer-motion" });
+  });
+
+  it("keeps WAAPI animations on elements Framer does not own", () => {
+    const other = { ...waapiOpacity, target: "div.other" };
+    const motion = buildMotion({ ...inputs, atStart: { ...(inputs.atStart as NonNullable<MotionInputs["atStart"]>), animations: [other] } });
+    expect(motion.entries.map((e) => e.source).sort()).toEqual(["framer-motion", "waapi"]);
+  });
+});
