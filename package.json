@@ -1,0 +1,22 @@
+{
+  "name": "kinetic",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev:extension": "pnpm --filter @kinetic/extension dev",
+    "dev:companion": "pnpm --filter @kinetic/companion dev",
+    "dev:library": "pnpm --filter @kinetic/library dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}

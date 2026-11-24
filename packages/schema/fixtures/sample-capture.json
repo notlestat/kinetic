@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "url": "https://example.com/pricing",
+    "site": "example.com",
+    "slug": "cta-button",
+    "timestamp": "2026-11-24T10:00:00.000Z",
+    "viewport": { "width": 1440, "height": 900, "deviceScaleFactor": 2 },
+    "selector": "main > section.hero a.cta",
+    "title": "Pricing"
+  },
+  "dom": {
+    "html": "<a class=\"cta\" href=\"https://example.com/signup\">Start now</a>"
+  },
+  "styles": {
+    "nodes": [
+      {
+        "selector": "main > section.hero a.cta",
+        "tag": "a",
+        "box": { "x": 620, "y": 480, "width": 200, "height": 48 },
+        "styles": {
+          "background-color": "color-1",
+          "color": "color-2",
+          "border-radius": "radius-1",
+          "padding": "12px 24px",
+          "transition": "background-color 150ms ease-out, transform 150ms ease-out"
+        }
+      }
+    ],
+    "tokens": {
+      "colors": { "color-1": "rgb(99, 91, 255)", "color-2": "rgb(255, 255, 255)" },
+      "fontSizes": { "font-size-1": "16px" },
+      "spacing": {},
+      "radii": { "radius-1": "999px" },
+      "shadows": {}
+    },
+    "fonts": [{ "family": "Inter", "weight": "600", "style": "normal" }]
+  },
+  "states": [
+    {
+      "name": "hover",
+      "target": "main > section.hero a.cta",
+      "changes": {
+        "main > section.hero a.cta": {
+          "background-color": "rgb(10, 37, 64)",
+          "transform": "translateY(-1px)"
+        }
+      },
+      "screenshot": "states/hover.png"
+    }
+  ],
+  "motion": {
+    "entries": [
+      {
+        "id": "css-transition-1",
+        "source": "css-transition",
+        "target": "main > section.hero a.cta",
+        "trigger": "hover",
+        "properties": [
+          {
+            "name": "background-color",
+            "keyframes": [
+              { "offset": 0, "value": "rgb(99, 91, 255)" },
+              { "offset": 1, "value": "rgb(10, 37, 64)" }
+            ]
+          },
+          {
+            "name": "transform",
+            "keyframes": [
+              { "offset": 0, "value": "none" },
+              { "offset": 1, "value": "translateY(-1px)" }
+            ]
+          }
+        ],
+        "duration": 150,
+        "delay": 0,
+        "easing": [0, 0, 0.58, 1],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": { "transition": "background-color 150ms ease-out, transform 150ms ease-out" }
+      }
+    ]
+  },
+  "media": {
+    "dom": "dom.html",
+    "styles": "styles.json",
+    "motion": "motion.json"
+  }
+}
