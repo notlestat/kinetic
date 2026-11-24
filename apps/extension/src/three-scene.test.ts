@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_ATTRIBUTE_NUMBERS, MAX_IMAGE_CHARS, shaderSlug, shadowMapTypeName, stripSceneJson, toneMappingName, uniformValue } from "./three-scene.ts";
+import { beatsMainScene, isFullScreenPass, MAX_ATTRIBUTE_NUMBERS, MAX_IMAGE_CHARS, MAX_OUTLINE_NODES, sceneOutline, shaderSlug, shadowMapTypeName, stripSceneJson, toneMappingName, uniformValue } from "./three-scene.ts";
 
 describe("stripSceneJson", () => {
   it("leaves out big attributes and images but keeps geometry type, parameters and counts", () => {
@@ -46,5 +46,71 @@ describe("constants and uniforms", () => {
     expect(shaderSlug("HeroGlow", "ShaderMaterial", 0)).toBe("hero-glow-1");
     expect(shaderSlug("", "RawShaderMaterial", 2)).toBe("raw-shader-material-3");
     expect(shaderSlug("../../etc passwd", "ShaderMaterial", 0)).toBe("etc-passwd-1");
+  });
+});
+
+describe("main scene choice", () => {
+  const mesh = { isMesh: true, children: [] };
+  const group = { children: [mesh, mesh] };
+
+  it("treats a scene holding only one childless mesh as a full-screen pass", () => {
+    expect(isFullScreenPass({ children: [mesh] })).toBe(true);
+    expect(isFullScreenPass({ children: [mesh, mesh] })).toBe(false);
+    expect(isFullScreenPass({ children: [{ isMesh: true, children: [mesh] }] })).toBe(false);
+    expect(isFullScreenPass({ children: [group] })).toBe(false);
+    expect(isFullScreenPass({ children: [] })).toBe(false);
+  });
+
+  it("prefers a real scene over a pass drawn more often, then the most drawn scene", () => {
+    // A blur pass drawn five times a frame must not replace the real scene.
+    expect(beatsMainScene({ count: 50, pass: true }, { count: 10, pass: false })).toBe(false);
+    expect(beatsMainScene({ count: 1, pass: false }, { count: 50, pass: true })).toBe(true);
+    expect(beatsMainScene({ count: 11, pass: false }, { count: 10, pass: false })).toBe(true);
+    expect(beatsMainScene({ count: 10, pass: false }, { count: 10, pass: false })).toBe(false);
+    // With nothing else drawn, a single full-screen shader is still the main scene.
+    expect(beatsMainScene({ count: 1, pass: true }, undefined)).toBe(true);
+  });
+});
+
+describe("sceneOutline", () => {
+  const zero = { x: 0, y: 0, z: 0 };
+  const one = { x: 1, y: 1, z: 1 };
+  const object = (type: string, extra: Record<string, unknown> = {}) => ({ type, position: zero, rotation: zero, scale: one, children: [], ...extra });
+
+  it("keeps objects, transforms, plain geometry parameters and material names", () => {
+    const logo = object("Mesh", {
+      name: "Logo",
+      position: { x: 1.234567, y: 0, z: -2 },
+      geometry: { type: "TorusGeometry", parameters: { radius: 1, tube: 0.2, buffer: new Float32Array(3), nested: { a: 1 } } },
+      material: [{ type: "ShaderMaterial", name: "Glass" }, { type: "MeshBasicMaterial", name: "" }],
+    });
+    const hidden = object("Group", { visible: false });
+    const outline = sceneOutline(object("Scene", { children: [logo, hidden] }), "toJSON returned nothing");
+    expect(outline.metadata).toMatchObject({ type: "KineticSceneOutline", reason: "toJSON returned nothing" });
+    expect(outline.object).toEqual({
+      type: "Scene",
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      children: [
+        {
+          type: "Mesh",
+          name: "Logo",
+          position: [1.2346, 0, -2],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          geometry: { type: "TorusGeometry", parameters: { radius: 1, tube: 0.2 } },
+          materials: [{ type: "ShaderMaterial", name: "Glass" }, { type: "MeshBasicMaterial" }],
+        },
+        { type: "Group", visible: false, position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      ],
+    });
+  });
+
+  it("stops at the object limit and says so", () => {
+    const many = Array.from({ length: MAX_OUTLINE_NODES + 5 }, () => object("Mesh"));
+    const outline = sceneOutline(object("Scene", { children: many }), "x");
+    expect((outline.object as { children: unknown[] }).children).toHaveLength(MAX_OUTLINE_NODES - 1);
+    expect(outline.metadata).toMatchObject({ truncatedAt: MAX_OUTLINE_NODES });
   });
 });

@@ -151,3 +151,31 @@ test("keeps the capture when the companion is offline and retries it later", asy
   expect(capture.states?.length).toBeGreaterThan(0);
   expect(await fileExists(path.join(captureDirFor(SITE, "offline-button"), "states/default.png"))).toBe(true);
 });
+
+test("the toolbar button says to refresh a page Kinetic can't reach, and opens the picker once it can", async ({ context, page }) => {
+  const [worker] = context.serviceWorkers();
+  if (!worker) throw new Error("no service worker");
+  // Presses the toolbar button for the active tab and reads back its badge and tooltip.
+  const press = () =>
+    worker.evaluate(async () => {
+      type TabArgs = { tabId: number };
+      const { chrome } = globalThis as unknown as {
+        chrome: {
+          tabs: { query(query: { active: boolean }): Promise<{ id?: number }[]> };
+          action: { getBadgeText(args: TabArgs): Promise<string>; getTitle(args: TabArgs): Promise<string> };
+        };
+      };
+      const [tab] = await chrome.tabs.query({ active: true });
+      const tabId = tab?.id as number;
+      await (globalThis as { kineticTogglePicker?: (id?: number) => Promise<void> }).kineticTogglePicker?.(tabId);
+      return { badge: await chrome.action.getBadgeText({ tabId }), title: await chrome.action.getTitle({ tabId }) };
+    });
+
+  // about:blank has no content script, like a tab left open while Kinetic was reloaded.
+  await page.goto("about:blank");
+  expect(await press()).toEqual({ badge: "!", title: expect.stringContaining("Refresh it, then try again") });
+
+  await openTestPage(page, "button.html");
+  expect(await press()).toEqual({ badge: "", title: "Kinetic: pick a component (Alt+Shift+K)" });
+  await expect(page.locator("kinetic-picker")).toHaveCount(1);
+});

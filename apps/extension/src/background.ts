@@ -15,6 +15,8 @@ import { captureStates, type StateCaptureResult } from "./states.ts";
 const TEST_HOOKS = import.meta.env.MODE !== "production";
 
 export function startBackground(): void {
+  // Lets end-to-end tests press the toolbar button, which Playwright cannot click.
+  if (TEST_HOOKS) (globalThis as { kineticTogglePicker?: typeof togglePicker }).kineticTogglePicker = togglePicker;
   browser.action.onClicked.addListener((tab) => void togglePicker(tab.id));
   browser.commands.onCommand.addListener((command, tab) => {
     if (command === "toggle-picker") void togglePicker(tab?.id);
@@ -52,12 +54,23 @@ export function startBackground(): void {
   });
 }
 
+export const UNREACHABLE_BADGE = "!";
+export const UNREACHABLE_TITLE = "Kinetic can't reach this page. Refresh it, then try again. Pages open before Kinetic was installed or reloaded need a refresh; Chrome pages can't be captured.";
+const DEFAULT_TITLE = "Kinetic: pick a component (Alt+Shift+K)";
+
 async function togglePicker(tabId: number | undefined): Promise<void> {
   if (tabId === undefined) return;
   try {
     await browser.tabs.sendMessage(tabId, { type: "picker:toggle" } satisfies RuntimeMessage, { frameId: 0 });
+    await browser.action.setBadgeText({ tabId, text: "" });
+    await browser.action.setTitle({ tabId, title: DEFAULT_TITLE });
   } catch {
-    // No content script on this page (chrome:// pages, the Web Store, or a tab opened before install).
+    // No content script on this page: a tab open since before Kinetic was installed or
+    // reloaded, or a page Chrome keeps extensions out of. Say so on the icon instead of
+    // doing nothing.
+    await browser.action.setBadgeText({ tabId, text: UNREACHABLE_BADGE }).catch(() => {});
+    await browser.action.setBadgeBackgroundColor({ tabId, color: "#d93025" }).catch(() => {});
+    await browser.action.setTitle({ tabId, title: UNREACHABLE_TITLE }).catch(() => {});
   }
 }
 

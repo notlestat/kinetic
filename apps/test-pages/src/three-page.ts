@@ -1,7 +1,9 @@
 // A three.js scene for Kinetic's 3D capture tests: a ShaderMaterial mesh that
 // spins at a steady rate, a camera driven by scroll, fog, shadows, tone mapping,
-// a big point cloud (its positions are too large for scene.json) and an
-// EffectComposer with a RenderPass and an OutputPass. Nothing is put on window:
+// a big point cloud (its positions are too large for scene.json), an
+// EffectComposer with a RenderPass and an OutputPass, and a blur pass drawn the
+// way the postprocessing library draws one: its own Scene holding a single
+// full-screen mesh, drawn three times a frame. Nothing is put on window:
 // Kinetic finds the scene through three.js's own __THREE_DEVTOOLS__ events.
 
 import * as THREE from "three";
@@ -87,6 +89,29 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new OutputPass());
 
+// Drawn into its own target, so the canvas is unchanged. It is drawn more often
+// than the real scene, which must still be the one Kinetic records.
+const blurTarget = new THREE.WebGLRenderTarget(64, 64);
+const blurScene = new THREE.Scene();
+const blurCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const blurGeometry = new THREE.BufferGeometry();
+blurGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
+blurScene.add(
+  new THREE.Mesh(
+    blurGeometry,
+    new THREE.ShaderMaterial({
+      name: "BlurMaterial",
+      vertexShader: "void main() { gl_Position = vec4(position.xy, 0.0, 1.0); }",
+      fragmentShader: "void main() { gl_FragColor = vec4(0.0); }",
+    }),
+  ),
+);
+function renderBlur(): void {
+  renderer.setRenderTarget(blurTarget);
+  for (let i = 0; i < 3; i++) renderer.render(blurScene, blurCamera);
+  renderer.setRenderTarget(null);
+}
+
 function resize(): void {
   if (!canvas) return;
   const { clientWidth: width, clientHeight: height } = canvas;
@@ -113,4 +138,5 @@ renderer.setAnimationLoop(() => {
   camera.position.set(0, 1 + progress * 1.5, 6 - progress * 3);
   camera.lookAt(0, 0, 0);
   composer.render();
+  renderBlur();
 });
