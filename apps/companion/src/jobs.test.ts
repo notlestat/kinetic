@@ -120,6 +120,31 @@ describe("JobQueue", () => {
     expect(errors).toEqual(["record job failed for example.com/a"]);
   });
 
+  it("lets a job queue a follow-up job for the same capture, which runs after it", async () => {
+    const a = await addCapture("a");
+    const runs: string[] = [];
+    const queue = new JobQueue({
+      libraryDir,
+      handlers: {
+        record: async ({ enqueue }) => {
+          runs.push("record");
+          await enqueue("rebuild");
+          return "awaiting-rebuild";
+        },
+        rebuild: async ({ setStatus }) => {
+          runs.push("rebuild");
+          expect(await statusOf(a)).toBe("awaiting-rebuild");
+          await setStatus("rebuilding");
+          return "done";
+        },
+      },
+    });
+    await queue.enqueue("example.com", "a", "record");
+    await queue.idle();
+    expect(runs).toEqual(["record", "rebuild"]);
+    expect(await statusOf(a)).toBe("done");
+  });
+
   it("refuses unknown kinds and unsafe names", async () => {
     const queue = new JobQueue({ libraryDir, handlers: {} });
     await expect(queue.enqueue("example.com", "a", "record")).rejects.toThrow("no handler");
@@ -129,14 +154,20 @@ describe("JobQueue", () => {
 });
 
 describe("failInterruptedJobs", () => {
-  it("marks queued, recording and rebuilding captures failed and leaves the rest", async () => {
+  it("marks queued, recording, rebuilding and previewing captures failed and leaves the rest", async () => {
     const recording = await addCapture("recording");
+    const previewing = await addCapture("previewing");
+    const waiting = await addCapture("waiting");
     const done = await addCapture("done");
     const none = await addCapture("none");
     await setJob(recording, "recording");
+    await setJob(previewing, "previewing");
+    await setJob(waiting, "awaiting-rebuild");
     await setJob(done, "done");
-    expect(await failInterruptedJobs(libraryDir)).toBe(1);
+    expect(await failInterruptedJobs(libraryDir)).toBe(2);
     expect(await statusOf(recording)).toBe("failed");
+    expect(await statusOf(previewing)).toBe("failed");
+    expect(await statusOf(waiting)).toBe("awaiting-rebuild");
     expect(await statusOf(done)).toBe("done");
     expect(await statusOf(none)).toBeUndefined();
   });

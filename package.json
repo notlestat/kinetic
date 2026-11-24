@@ -14,7 +14,8 @@
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p e2e",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "dev:test-pages": "pnpm --filter @kinetic/test-pages dev"
+    "dev:test-pages": "pnpm --filter @kinetic/test-pages dev",
+    "kinetic": "pnpm --filter @kinetic/companion exec tsx src/cli.ts"
   },
   "devDependencies": {
     "@kinetic/schema": "workspace:*",

@@ -17,7 +17,10 @@ import {
   writeCapture,
   writeFileAtomic,
 } from "./library.ts";
-import { createRecordJob } from "./record-job.ts";
+import { type RebuildSettings, rebuildSettings } from "./env.ts";
+import { createPreviewJob, createRecordJob } from "./record-job.ts";
+import { createRebuildJob, loadPreview } from "./rebuild.ts";
+import { componentExists } from "./rebuild-prompt.ts";
 
 export const PORT = 4517;
 export const HOST = "127.0.0.1";
@@ -28,10 +31,27 @@ const MAX_BODY = 50 * 1024 * 1024;
 export interface AppOptions {
   /** Absolute path of the library/ folder captures are written into. */
   libraryDir: string;
-  /** The job queue. Defaults to one that records with Playwright. */
+  /** The job queue. Defaults to one that records, rebuilds and previews with the settings below. */
   jobs?: JobQueue;
   /** Queue a recording as soon as a capture arrives. Off unless the caller turns it on. */
   autoRecord?: boolean;
+  /** Rebuild mode and auto-rebuild. Defaults to handoff with no auto-rebuild. */
+  rebuild?: RebuildSettings;
+}
+
+/** Handoff, no auto-rebuild: what an empty environment gives. */
+export const DEFAULT_REBUILD_SETTINGS: RebuildSettings = rebuildSettings({});
+
+/** The queue the companion runs: record, then rebuild (per mode), then preview. */
+export function defaultJobs(libraryDir: string, rebuild: RebuildSettings): JobQueue {
+  return new JobQueue({
+    libraryDir,
+    handlers: {
+      record: createRecordJob(undefined, { autoRebuild: rebuild.autoRebuild && rebuild.mode !== "handoff" }),
+      rebuild: createRebuildJob({ settings: rebuild }),
+      preview: createPreviewJob(loadPreview),
+    },
+  });
 }
 
 const CaptureFileBodySchema = z.object({
@@ -67,7 +87,7 @@ function mediaUrls(origin: string, capture: Capture): Record<string, string> {
   return Object.fromEntries(Object.entries(capture.media ?? {}).flatMap(([key, file]) => (file ? [[key, fileUrl(origin, site, slug, file)]] : [])));
 }
 
-export function createApp({ libraryDir, jobs = new JobQueue({ libraryDir, handlers: { record: createRecordJob() } }), autoRecord = false }: AppOptions) {
+export function createApp({ libraryDir, autoRecord = false, rebuild = DEFAULT_REBUILD_SETTINGS, jobs = defaultJobs(libraryDir, rebuild) }: AppOptions) {
   const app = new Hono();
   // The Host header has passed the guard by the time this is used, so it is one of ALLOWED_HOSTS.
   const originOf = (c: Context) => `http://${c.req.header("host")}`;
@@ -186,11 +206,9 @@ export function createApp({ libraryDir, jobs = new JobQueue({ libraryDir, handle
     return fileResponse(file, c.req.header("range"), c.req.method);
   });
 
-  // Queues a recording. JSON-only like every POST route, which keeps browsers behind a preflight.
-  app.post("/captures/:site/:slug/record", async (c) => {
-    const read = await readJson(c);
-    if (!read.ok) return read.response;
-    const { site, slug } = c.req.param();
+  /** The capture folder for a job route, or a 404 response when it holds no capture. */
+  const jobTarget = async (c: Context): Promise<{ site: string; slug: string; dir: string } | Response> => {
+    const { site = "", slug = "" } = c.req.param();
     const dir = captureDir(libraryDir, site, slug);
     try {
       await readCapture(dir);
@@ -198,7 +216,37 @@ export function createApp({ libraryDir, jobs = new JobQueue({ libraryDir, handle
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return c.json({ error: "capture not found" }, 404);
       throw error;
     }
-    const job = await jobs.enqueue(site, slug, "record");
+    return { site, slug, dir };
+  };
+
+  // Queues a recording. JSON-only like every POST route, which keeps browsers behind a preflight.
+  app.post("/captures/:site/:slug/record", async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+    const target = await jobTarget(c);
+    if (target instanceof Response) return target;
+    const job = await jobs.enqueue(target.site, target.slug, "record");
+    return c.json({ ok: true, job }, 202);
+  });
+
+  // Starts a rebuild in the configured mode. Handoff writes REBUILD.md and waits for the user's agent.
+  app.post("/captures/:site/:slug/rebuild", async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+    const target = await jobTarget(c);
+    if (target instanceof Response) return target;
+    const job = await jobs.enqueue(target.site, target.slug, "rebuild");
+    return c.json({ ok: true, mode: rebuild.mode, job }, 202);
+  });
+
+  // Renders Component.tsx in the sandbox, records Component.preview.webm and scores each state.
+  app.post("/captures/:site/:slug/preview", async (c) => {
+    const read = await readJson(c);
+    if (!read.ok) return read.response;
+    const target = await jobTarget(c);
+    if (target instanceof Response) return target;
+    if (!(await componentExists(target.dir))) return c.json({ error: "Component.tsx not found. Write it first: see REBUILD.md." }, 409);
+    const job = await jobs.enqueue(target.site, target.slug, "preview");
     return c.json({ ok: true, job }, 202);
   });
 

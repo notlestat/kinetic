@@ -28,6 +28,10 @@ declare global {
     __kineticRecorder?: RecorderState;
     /** uniqueSelector from the extension, injected as source text so selectors match the capture. */
     __kineticUniqueSelector?: (el: Element) => string;
+    /** Set by the sandbox harness once the rebuild has mounted (sandbox/src/harness.tsx). */
+    __kineticReady?: boolean;
+    /** The rebuild's render or runtime error, from the sandbox harness. */
+    __kineticError?: string;
   }
 }
 
@@ -292,4 +296,49 @@ export function focusNode(index: number): boolean {
 export function blurActive(): void {
   const active = document.activeElement;
   if (active instanceof HTMLElement || active instanceof SVGElement) active.blur();
+}
+
+// ─── preview only ────────────────────────────────────────────────────────────
+
+/** The rebuild's root in the sandbox harness: #kinetic-root's only child, or #kinetic-root when it renders several. */
+export function previewRoot(): Element | null {
+  const host = document.getElementById("kinetic-root");
+  if (!host) return null;
+  return host.children.length === 1 ? (host.firstElementChild as Element) : host;
+}
+
+/** Marks the element at a child-index path from `root` with data-kinetic-target, clearing any earlier mark. */
+export function markPath(root: Element, path: number[]): boolean {
+  for (const el of Array.from(document.querySelectorAll("[data-kinetic-target]"))) el.removeAttribute("data-kinetic-target");
+  let node: Element | undefined = root;
+  for (const index of path) node = node?.children[index];
+  if (!node) return false;
+  node.setAttribute("data-kinetic-target", "");
+  return true;
+}
+
+/** The element's box in document coordinates, after scrolling it to the middle of the viewport. */
+export function documentBox(el: Element): { x: number; y: number; width: number; height: number } {
+  el.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+  const r = el.getBoundingClientRect();
+  return { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height };
+}
+
+/**
+ * Waits for a forced state's transitions: at least minMs, then until no finite
+ * animation is running, up to maxMs. Endless loops are ignored.
+ */
+export async function settle(input: { minMs: number; maxMs: number }): Promise<void> {
+  const start = performance.now();
+  await new Promise((resolve) => setTimeout(resolve, input.minMs));
+  while (performance.now() - start < input.maxMs) {
+    const running = document.getAnimations().filter((a) => {
+      if (a.playState !== "running") return false;
+      const end = a.effect?.getComputedTiming().endTime;
+      return typeof end === "number" && Number.isFinite(end);
+    });
+    if (running.length === 0) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }

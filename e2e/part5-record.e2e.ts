@@ -13,10 +13,11 @@ async function record(slug: string) {
   expect(res.status).toBe(202);
   await expect
     .poll(async () => (await readCaptureJson(SITE, slug)).job?.status, { timeout: 150_000, intervals: [1000] })
-    .toMatch(/^(done|failed)$/);
+    .toMatch(/^(awaiting-rebuild|failed)$/);
   const capture = await readCaptureJson(SITE, slug);
   expect(capture.job?.error).toBeUndefined();
-  expect(capture.job?.status).toBe("done");
+  // Recorded, REBUILD.md written, waiting for the hand-off (the default rebuild mode).
+  expect(capture.job?.status).toBe("awaiting-rebuild");
   return capture;
 }
 
@@ -121,7 +122,7 @@ test("records the ScrollTrigger page: scroll-sampled parallax without repeating 
 test("lists recorded captures and serves their video with byte ranges", async () => {
   const list = (await (await fetch(`${COMPANION}/captures`)).json()) as { captures: { slug: string; job?: { status: string }; media: Record<string, string> }[] };
   const hero = list.captures.find((c) => c.slug === "hero-record");
-  expect(hero?.job?.status).toBe("done");
+  expect(hero?.job?.status).toBe("awaiting-rebuild");
   expect(hero?.media.original).toBe(`${COMPANION}/files/${SITE}/hero-record/original.webm`);
   const res = await fetch(hero?.media.original ?? "", { headers: { range: "bytes=0-3" } });
   expect(res.status).toBe(206);

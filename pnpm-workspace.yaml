@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - apps/companion/sandbox
 allowBuilds:
   esbuild: true
   # Downloads the ffmpeg binary the companion uses to crop original.webm.

@@ -1,0 +1,62 @@
+{
+  "nodes": [
+    {
+      "selector": "html > body > main > section.stage",
+      "tag": "section",
+      "box": {
+        "x": 184,
+        "y": 151,
+        "width": 912,
+        "height": 1600
+      },
+      "styles": {
+        "bottom": "0px",
+        "box-sizing": "border-box",
+        "color": "rgb(10, 37, 64)",
+        "font-family": "Inter, system-ui, sans-serif",
+        "left": "0px",
+        "position": "relative",
+        "right": "0px",
+        "top": "0px"
+      }
+    },
+    {
+      "selector": "#scene",
+      "tag": "canvas",
+      "box": {
+        "x": 184,
+        "y": 551,
+        "width": 912,
+        "height": 800
+      },
+      "styles": {
+        "aspect-ratio": "auto 912 / 800",
+        "border-bottom-left-radius": "radius-1",
+        "border-bottom-right-radius": "radius-1",
+        "border-top-left-radius": "radius-1",
+        "border-top-right-radius": "radius-1",
+        "box-sizing": "border-box",
+        "display": "block",
+        "position": "sticky",
+        "top": "0px"
+      }
+    }
+  ],
+  "tokens": {
+    "colors": {},
+    "fontSizes": {},
+    "spacing": {},
+    "radii": {
+      "radius-1": "16px"
+    },
+    "shadows": {}
+  },
+  "fonts": [
+    {
+      "family": "Inter",
+      "weight": "400",
+      "style": "normal",
+      "src": "http://127.0.0.1:5180/assets/inter-latin-400-normal-C38fXH4l.woff2"
+    }
+  ]
+}

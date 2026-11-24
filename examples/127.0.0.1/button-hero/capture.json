@@ -1,0 +1,958 @@
+{
+  "schemaVersion": 1,
+  "meta": {
+    "url": "http://127.0.0.1:5180/button.html",
+    "site": "127.0.0.1",
+    "slug": "button-hero",
+    "timestamp": "2026-11-24T21:20:23.322Z",
+    "viewport": {
+      "width": 1280,
+      "height": 800,
+      "deviceScaleFactor": 1
+    },
+    "selector": "html > body > main > section.hero",
+    "title": "Button test page"
+  },
+  "dom": {
+    "html": "<section class=\"hero\">\n        <p>Primary call to action with hover, focus and active transitions.</p>\n        <button class=\"cta\" type=\"button\">\n          Start now <span class=\"arrow\" aria-hidden=\"true\">→</span>\n        </button>\n        <a class=\"chip\" href=\"#pricing\">See pricing <span class=\"dot\" aria-hidden=\"true\" style=\"opacity: 0.943;\"></span></a>\n      </section>"
+  },
+  "styles": {
+    "nodes": [
+      {
+        "selector": "html > body > main > section.hero",
+        "tag": "section",
+        "box": {
+          "x": 184,
+          "y": 111,
+          "width": 912,
+          "height": 255.98
+        },
+        "styles": {
+          "background-color": "color-1",
+          "border-bottom-left-radius": "radius-1",
+          "border-bottom-right-radius": "radius-1",
+          "border-top-left-radius": "radius-1",
+          "border-top-right-radius": "radius-1",
+          "box-sizing": "border-box",
+          "color": "rgb(10, 37, 64)",
+          "column-gap": "space-4",
+          "display": "grid",
+          "font-family": "Inter, system-ui, sans-serif",
+          "grid-template-columns": "816px",
+          "grid-template-rows": "56px 43.1875px 28.7969px",
+          "justify-items": "start",
+          "padding-bottom": "space-6",
+          "padding-left": "space-6",
+          "padding-right": "space-6",
+          "padding-top": "space-6",
+          "row-gap": "space-4"
+        }
+      },
+      {
+        "selector": "html > body > main > section.hero > p",
+        "tag": "p",
+        "box": {
+          "x": 232,
+          "y": 175,
+          "width": 462.88,
+          "height": 24
+        },
+        "styles": {
+          "box-sizing": "border-box",
+          "line-height": "24px"
+        }
+      },
+      {
+        "selector": "html > body > main > section.hero > button.cta",
+        "tag": "button",
+        "box": {
+          "x": 232,
+          "y": 231,
+          "width": 144.94,
+          "height": 43.19
+        },
+        "styles": {
+          "align-items": "center",
+          "background-color": "rgb(99, 91, 255)",
+          "border-bottom-left-radius": "radius-3",
+          "border-bottom-right-radius": "radius-3",
+          "border-bottom-style": "none",
+          "border-bottom-width": "0px",
+          "border-left-style": "none",
+          "border-left-width": "0px",
+          "border-right-style": "none",
+          "border-right-width": "0px",
+          "border-top-left-radius": "radius-3",
+          "border-top-right-radius": "radius-3",
+          "border-top-style": "none",
+          "border-top-width": "0px",
+          "box-shadow": "rgba(10, 37, 64, 0.2) 0px 1px 2px 0px",
+          "color": "color-1",
+          "column-gap": "space-2",
+          "cursor": "pointer",
+          "display": "flex",
+          "font-weight": "600",
+          "line-height": "19.2px",
+          "padding-bottom": "space-3",
+          "padding-left": "space-5",
+          "padding-right": "space-5",
+          "padding-top": "space-3",
+          "row-gap": "space-2",
+          "text-align": "center",
+          "transition-behavior": "normal, normal, normal",
+          "transition-delay": "0s, 0s, 0s",
+          "transition-duration": "0.15s, 0.15s, 0.2s",
+          "transition-property": "background-color, transform, box-shadow",
+          "transition-timing-function": "ease-out, ease-out, cubic-bezier(0.2, 0, 0, 1)"
+        }
+      },
+      {
+        "selector": "html > body > main > section.hero > button.cta > span.arrow",
+        "tag": "span",
+        "box": {
+          "x": 338.36,
+          "y": 243,
+          "width": 14.58,
+          "height": 19.19
+        },
+        "styles": {
+          "box-sizing": "border-box",
+          "display": "block",
+          "transition-duration": "0.15s",
+          "transition-property": "transform",
+          "transition-timing-function": "ease-out"
+        }
+      },
+      {
+        "selector": "html > body > main > section.hero > a.chip",
+        "tag": "a",
+        "box": {
+          "x": 232,
+          "y": 290.19,
+          "width": 114.88,
+          "height": 28.8
+        },
+        "styles": {
+          "align-items": "center",
+          "background-color": "rgb(246, 249, 252)",
+          "border-bottom-left-radius": "radius-3",
+          "border-bottom-right-radius": "radius-3",
+          "border-top-left-radius": "radius-3",
+          "border-top-right-radius": "radius-3",
+          "box-sizing": "border-box",
+          "column-gap": "space-2",
+          "cursor": "pointer",
+          "display": "flex",
+          "font-size": "14px",
+          "font-weight": "500",
+          "line-height": "16.8px",
+          "padding-bottom": "space-1",
+          "padding-left": "space-3",
+          "padding-right": "space-3",
+          "padding-top": "space-1",
+          "row-gap": "space-2"
+        }
+      },
+      {
+        "selector": "html > body > main > section.hero > a.chip > span.dot",
+        "tag": "span",
+        "box": {
+          "x": 326.88,
+          "y": 300.58,
+          "width": 8,
+          "height": 8
+        },
+        "styles": {
+          "background-color": "rgb(0, 217, 36)",
+          "border-bottom-left-radius": "radius-2",
+          "border-bottom-right-radius": "radius-2",
+          "border-top-left-radius": "radius-2",
+          "border-top-right-radius": "radius-2",
+          "box-sizing": "border-box",
+          "display": "block",
+          "opacity": "0.943"
+        }
+      }
+    ],
+    "tokens": {
+      "colors": {
+        "color-1": "rgb(255, 255, 255)"
+      },
+      "fontSizes": {},
+      "spacing": {
+        "space-1": "6px",
+        "space-2": "8px",
+        "space-3": "12px",
+        "space-4": "16px",
+        "space-5": "24px",
+        "space-6": "48px"
+      },
+      "radii": {
+        "radius-1": "16px",
+        "radius-2": "50%",
+        "radius-3": "999px"
+      },
+      "shadows": {}
+    },
+    "fonts": [
+      {
+        "family": "Inter",
+        "weight": "400",
+        "style": "normal",
+        "src": "http://127.0.0.1:5180/assets/inter-latin-400-normal-C38fXH4l.woff2"
+      },
+      {
+        "family": "Inter",
+        "weight": "600",
+        "style": "normal",
+        "src": "http://127.0.0.1:5180/assets/inter-latin-600-normal-LgqL8muc.woff2"
+      },
+      {
+        "family": "Inter",
+        "weight": "500",
+        "style": "normal",
+        "src": "http://127.0.0.1:5180/assets/inter-latin-400-normal-C38fXH4l.woff2"
+      }
+    ]
+  },
+  "states": [
+    {
+      "name": "hover",
+      "target": "html > body > main > section.hero > button.cta",
+      "changes": {
+        "html > body > main > section.hero > button.cta": {
+          "background-color": "rgb(10, 37, 64)",
+          "box-shadow": "rgba(10, 37, 64, 0.25) 0px 8px 24px 0px",
+          "transform": "matrix(1, 0, 0, 1, 0, -2)"
+        },
+        "html > body > main > section.hero > button.cta > span.arrow": {
+          "transform": "matrix(1, 0, 0, 1, 3, 0)"
+        },
+        "html > body > main > section.hero > a.chip > span.dot": {
+          "opacity": "0.731"
+        }
+      },
+      "screenshot": "states/hover-0.png"
+    },
+    {
+      "name": "focus",
+      "target": "html > body > main > section.hero > button.cta",
+      "changes": {
+        "html > body > main > section.hero > button.cta": {
+          "outline-color": "rgb(128, 233, 255)",
+          "outline-offset": "3px",
+          "outline-style": "solid"
+        },
+        "html > body > main > section.hero > a.chip > span.dot": {
+          "opacity": "0.559"
+        }
+      },
+      "screenshot": "states/focus-0.png"
+    },
+    {
+      "name": "active",
+      "target": "html > body > main > section.hero > button.cta",
+      "changes": {
+        "html > body > main > section.hero > button.cta": {
+          "background-color": "rgb(10, 37, 64)",
+          "box-shadow": "rgba(10, 37, 64, 0.25) 0px 8px 24px 0px",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)"
+        },
+        "html > body > main > section.hero > button.cta > span.arrow": {
+          "transform": "matrix(1, 0, 0, 1, 3, 0)"
+        },
+        "html > body > main > section.hero > a.chip > span.dot": {
+          "opacity": "0.395"
+        }
+      },
+      "screenshot": "states/active-0.png"
+    },
+    {
+      "name": "hover",
+      "target": "html > body > main > section.hero > a.chip",
+      "changes": {
+        "html > body > main > section.hero > a.chip > span.dot": {
+          "opacity": "0.269"
+        }
+      },
+      "screenshot": "states/hover-1.png"
+    },
+    {
+      "name": "focus",
+      "target": "html > body > main > section.hero > a.chip",
+      "changes": {
+        "html > body > main > section.hero > a.chip": {
+          "outline-color": "rgb(0, 95, 204)",
+          "outline-offset": "1px",
+          "outline-style": "auto",
+          "outline-width": "1px"
+        },
+        "html > body > main > section.hero > a.chip > span.dot": {
+          "opacity": "0.205"
+        }
+      },
+      "screenshot": "states/focus-1.png"
+    },
+    {
+      "name": "active",
+      "target": "html > body > main > section.hero > a.chip",
+      "changes": {
+        "html > body > main > section.hero > a.chip > span.dot": {
+          "opacity": "0.215"
+        }
+      },
+      "screenshot": "states/active-1.png"
+    },
+    {
+      "name": "mobile",
+      "target": "html > body > main > section.hero",
+      "changes": {
+        "html > body > main > section.hero": {
+          "grid-template-columns": "246px",
+          "grid-template-rows": "104px 43.1875px 28.7969px"
+        },
+        "html > body > main > section.hero > button.cta": {
+          "justify-content": "center"
+        },
+        "html > body > main > section.hero > a.chip > span.dot": {
+          "opacity": "0.91"
+        }
+      },
+      "screenshot": "states/mobile.png"
+    }
+  ],
+  "motion": {
+    "entries": [
+      {
+        "id": "css-transition-1",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta",
+        "trigger": "hover",
+        "properties": [
+          {
+            "name": "background-color",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "rgb(99, 91, 255)"
+              },
+              {
+                "offset": 1,
+                "value": "rgb(10, 37, 64)"
+              }
+            ]
+          }
+        ],
+        "duration": 150,
+        "delay": 0,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "kind": "CSSTransition",
+          "name": "background-color",
+          "timing": {
+            "duration": 150,
+            "delay": 0,
+            "endDelay": 0,
+            "iterations": 1,
+            "direction": "normal",
+            "easing": "ease-out",
+            "fill": "backwards"
+          },
+          "keyframeEasings": [
+            "linear",
+            "linear"
+          ]
+        }
+      },
+      {
+        "id": "css-transition-2",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta",
+        "trigger": "hover",
+        "properties": [
+          {
+            "name": "box-shadow",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "rgba(10, 37, 64, 0.2) 0px 1px 2px 0px"
+              },
+              {
+                "offset": 1,
+                "value": "rgba(10, 37, 64, 0.25) 0px 8px 24px 0px"
+              }
+            ]
+          }
+        ],
+        "duration": 200,
+        "delay": 0,
+        "easing": [
+          0.2,
+          0,
+          0,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "kind": "CSSTransition",
+          "name": "box-shadow",
+          "timing": {
+            "duration": 200,
+            "delay": 0,
+            "endDelay": 0,
+            "iterations": 1,
+            "direction": "normal",
+            "easing": "cubic-bezier(0.2, 0, 0, 1)",
+            "fill": "backwards"
+          },
+          "keyframeEasings": [
+            "linear",
+            "linear"
+          ]
+        }
+      },
+      {
+        "id": "css-transition-3",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta",
+        "trigger": "hover",
+        "properties": [
+          {
+            "name": "transform",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "none"
+              },
+              {
+                "offset": 1,
+                "value": "translateY(-2px)"
+              }
+            ]
+          }
+        ],
+        "duration": 150,
+        "delay": 0,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "kind": "CSSTransition",
+          "name": "transform",
+          "timing": {
+            "duration": 150,
+            "delay": 0,
+            "endDelay": 0,
+            "iterations": 1,
+            "direction": "normal",
+            "easing": "ease-out",
+            "fill": "backwards"
+          },
+          "keyframeEasings": [
+            "linear",
+            "linear"
+          ]
+        }
+      },
+      {
+        "id": "css-transition-4",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta > span.arrow",
+        "trigger": "hover",
+        "properties": [
+          {
+            "name": "transform",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "none"
+              },
+              {
+                "offset": 1,
+                "value": "translate(3px)"
+              }
+            ]
+          }
+        ],
+        "duration": 150,
+        "delay": 0,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "kind": "CSSTransition",
+          "name": "transform",
+          "timing": {
+            "duration": 150,
+            "delay": 0,
+            "endDelay": 0,
+            "iterations": 1,
+            "direction": "normal",
+            "easing": "ease-out",
+            "fill": "backwards"
+          },
+          "keyframeEasings": [
+            "linear",
+            "linear"
+          ]
+        }
+      },
+      {
+        "id": "css-transition-5",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta",
+        "trigger": "click",
+        "properties": [
+          {
+            "name": "background-color",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "rgb(99, 91, 255)"
+              },
+              {
+                "offset": 1,
+                "value": "rgb(10, 37, 64)"
+              }
+            ]
+          }
+        ],
+        "duration": 150,
+        "delay": 0,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "from": "stylesheet",
+          "transitionProperty": "background-color",
+          "state": "active"
+        }
+      },
+      {
+        "id": "css-transition-6",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta",
+        "trigger": "click",
+        "properties": [
+          {
+            "name": "box-shadow",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "rgba(10, 37, 64, 0.2) 0px 1px 2px 0px"
+              },
+              {
+                "offset": 1,
+                "value": "rgba(10, 37, 64, 0.25) 0px 8px 24px 0px"
+              }
+            ]
+          }
+        ],
+        "duration": 200,
+        "delay": 0,
+        "easing": [
+          0.2,
+          0,
+          0,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "from": "stylesheet",
+          "transitionProperty": "box-shadow",
+          "state": "active"
+        }
+      },
+      {
+        "id": "css-transition-7",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta",
+        "trigger": "click",
+        "properties": [
+          {
+            "name": "transform",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "none"
+              },
+              {
+                "offset": 1,
+                "value": "matrix(1, 0, 0, 1, 0, 0)"
+              }
+            ]
+          }
+        ],
+        "duration": 150,
+        "delay": 0,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "from": "stylesheet",
+          "transitionProperty": "transform",
+          "state": "active"
+        }
+      },
+      {
+        "id": "css-transition-8",
+        "source": "css-transition",
+        "target": "html > body > main > section.hero > button.cta > span.arrow",
+        "trigger": "click",
+        "properties": [
+          {
+            "name": "transform",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": "none"
+              },
+              {
+                "offset": 1,
+                "value": "matrix(1, 0, 0, 1, 3, 0)"
+              }
+            ]
+          }
+        ],
+        "duration": 150,
+        "delay": 0,
+        "easing": [
+          0,
+          0,
+          0.58,
+          1
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "exact",
+        "raw": {
+          "from": "stylesheet",
+          "transitionProperty": "transform",
+          "state": "active"
+        }
+      },
+      {
+        "id": "sampled-1",
+        "source": "sampled",
+        "target": "html > body > main > section.hero > a.chip > span.dot",
+        "trigger": "loop",
+        "properties": [
+          {
+            "name": "opacity",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 0.994
+              },
+              {
+                "offset": 0.104,
+                "value": 0.856
+              },
+              {
+                "offset": 0.285,
+                "value": 0.429
+              },
+              {
+                "offset": 0.354,
+                "value": 0.292
+              },
+              {
+                "offset": 0.41,
+                "value": 0.224
+              },
+              {
+                "offset": 0.465,
+                "value": 0.2
+              },
+              {
+                "offset": 0.535,
+                "value": 0.238
+              },
+              {
+                "offset": 0.59,
+                "value": 0.318
+              },
+              {
+                "offset": 0.785,
+                "value": 0.771
+              },
+              {
+                "offset": 0.868,
+                "value": 0.929
+              },
+              {
+                "offset": 0.937,
+                "value": 0.994
+              },
+              {
+                "offset": 1,
+                "value": 0.986
+              }
+            ]
+          }
+        ],
+        "duration": 1200,
+        "delay": 0,
+        "easing": "linear",
+        "iterations": "infinite",
+        "direction": "normal",
+        "confidence": "approximate",
+        "raw": {
+          "window": "idle",
+          "frames": 91,
+          "sampledMs": 1492,
+          "periodFound": true
+        }
+      },
+      {
+        "id": "sampled-2",
+        "source": "sampled",
+        "target": "html > body > main > section.hero > a.chip",
+        "trigger": "hover",
+        "properties": [
+          {
+            "name": "y",
+            "keyframes": [
+              {
+                "offset": 0,
+                "value": 0
+              },
+              {
+                "offset": 1,
+                "value": -4
+              }
+            ]
+          }
+        ],
+        "duration": 300,
+        "delay": 0,
+        "easing": [
+          0.29,
+          0.791,
+          0.438,
+          0.978
+        ],
+        "iterations": 1,
+        "direction": "normal",
+        "confidence": "approximate",
+        "raw": {
+          "window": "hover",
+          "inputTarget": "html > body > main > section.hero > a.chip",
+          "frames": 19,
+          "fitError": 0.0038
+        }
+      }
+    ],
+    "summary": {
+      "total": 10,
+      "bySource": {
+        "css-transition": 8,
+        "sampled": 2
+      },
+      "triggers": [
+        "click",
+        "hover",
+        "loop"
+      ],
+      "primary": "css",
+      "suggestedLibrary": "framer-motion"
+    }
+  },
+  "framework": {
+    "kind": "none",
+    "components": [],
+    "suggestedSplit": [
+      {
+        "name": "Text",
+        "domNodes": [
+          "html > body > main > section.hero > p"
+        ]
+      },
+      {
+        "name": "Cta",
+        "domNodes": [
+          "html > body > main > section.hero > button.cta"
+        ]
+      },
+      {
+        "name": "Chip",
+        "domNodes": [
+          "html > body > main > section.hero > a.chip"
+        ]
+      }
+    ],
+    "detected": []
+  },
+  "media": {
+    "screenshot": "states/default.png",
+    "dom": "dom.html",
+    "styles": "styles.json",
+    "motion": "motion.json",
+    "framework": "framework.json",
+    "original": "original.webm",
+    "component": "Component.tsx",
+    "preview": "Component.preview.webm",
+    "notes": "NOTES.md"
+  },
+  "recording": {
+    "file": "original.webm",
+    "durationMs": 8080,
+    "size": {
+      "width": 960,
+      "height": 304
+    },
+    "locatedBy": "selector",
+    "steps": [
+      {
+        "kind": "idle",
+        "start": 200,
+        "end": 1708
+      },
+      {
+        "kind": "hover",
+        "target": "html > body > main > section.hero > button.cta",
+        "path": [
+          1
+        ],
+        "start": 1711,
+        "end": 3343
+      },
+      {
+        "kind": "hover",
+        "target": "html > body > main > section.hero > a.chip",
+        "path": [
+          2
+        ],
+        "start": 3345,
+        "end": 4977
+      },
+      {
+        "kind": "focus",
+        "target": "html > body > main > section.hero > button.cta",
+        "path": [
+          1
+        ],
+        "start": 4978,
+        "end": 6392
+      },
+      {
+        "kind": "focus",
+        "target": "html > body > main > section.hero > a.chip",
+        "path": [
+          2
+        ],
+        "start": 6392,
+        "end": 7798
+      }
+    ],
+    "recordedAt": "2026-11-24T21:20:39.265Z",
+    "warnings": [
+      "The page does not scroll far enough around the component, so there was no scroll pass."
+    ]
+  },
+  "job": {
+    "status": "done",
+    "updatedAt": "2026-11-24T21:20:55.385Z"
+  },
+  "preview": {
+    "file": "Component.preview.webm",
+    "threshold": 0.1,
+    "scores": [
+      {
+        "state": "default",
+        "original": "states/default.png",
+        "preview": "preview/default.png",
+        "diff": "diff/default.png",
+        "score": 0.0089
+      },
+      {
+        "state": "hover-0",
+        "original": "states/hover-0.png",
+        "preview": "preview/hover-0.png",
+        "diff": "diff/hover-0.png",
+        "score": 0.0091
+      },
+      {
+        "state": "focus-0",
+        "original": "states/focus-0.png",
+        "preview": "preview/focus-0.png",
+        "diff": "diff/focus-0.png",
+        "score": 0.0088
+      },
+      {
+        "state": "active-0",
+        "original": "states/active-0.png",
+        "preview": "preview/active-0.png",
+        "diff": "diff/active-0.png",
+        "score": 0.0094
+      },
+      {
+        "state": "hover-1",
+        "original": "states/hover-1.png",
+        "preview": "preview/hover-1.png",
+        "diff": "diff/hover-1.png",
+        "score": 0.0089
+      },
+      {
+        "state": "focus-1",
+        "original": "states/focus-1.png",
+        "preview": "preview/focus-1.png",
+        "diff": "diff/focus-1.png",
+        "score": 0.009
+      },
+      {
+        "state": "active-1",
+        "original": "states/active-1.png",
+        "preview": "preview/active-1.png",
+        "diff": "diff/active-1.png",
+        "score": 0.0089
+      },
+      {
+        "state": "mobile",
+        "original": "states/mobile.png",
+        "preview": "preview/mobile.png",
+        "diff": "diff/mobile.png",
+        "score": 0.1838
+      }
+    ],
+    "passed": false,
+    "diffReport": "DIFF.md",
+    "renderedAt": "2026-11-24T21:20:55.381Z"
+  }
+}

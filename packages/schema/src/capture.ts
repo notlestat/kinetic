@@ -412,7 +412,7 @@ export type Recording = z.infer<typeof RecordingSchema>;
 // ─── job (companion processing status) ───────────────────────────────────────
 // The companion processes captures one at a time and writes the status here.
 
-export const JobStatusSchema = z.enum(["queued", "recording", "awaiting-rebuild", "rebuilding", "done", "failed"]);
+export const JobStatusSchema = z.enum(["queued", "recording", "awaiting-rebuild", "rebuilding", "previewing", "done", "failed"]);
 export type JobStatus = z.infer<typeof JobStatusSchema>;
 
 export const JobSchema = z.object({
@@ -422,6 +422,59 @@ export const JobSchema = z.object({
   updatedAt: z.iso.datetime({ offset: true }),
 });
 export type Job = z.infer<typeof JobSchema>;
+
+// ─── rebuild (REBUILD.md, Component.tsx, NOTES.md) ───────────────────────────
+// Written by the companion when it writes REBUILD.md and when a rebuild runs.
+
+export const RebuildModeSchema = z.enum(["handoff", "claude-cli", "api"]);
+export type RebuildMode = z.infer<typeof RebuildModeSchema>;
+
+export const RebuildSchema = z.object({
+  /** How the last rebuild ran: handoff leaves Component.tsx to the user's own agent. */
+  mode: RebuildModeSchema,
+  /** "REBUILD.md". */
+  prompt: RelativeFilePathSchema,
+  /** The model, in api mode. */
+  model: z.string().optional(),
+  /** Automatic fix passes run so far (claude-cli and api modes run at most one). */
+  fixPasses: z.number().int().nonnegative(),
+  updatedAt: z.iso.datetime({ offset: true }),
+});
+export type Rebuild = z.infer<typeof RebuildSchema>;
+
+// ─── preview (Component.preview.webm, preview/, diff/) ───────────────────────
+// Written by the preview step, which renders Component.tsx in the sandbox and
+// compares each state screenshot with the original using pixelmatch.
+
+export const PreviewScoreSchema = z.object({
+  /** "default", "hover-0", "focus-1", "mobile": the original screenshot's name. */
+  state: z.string().min(1),
+  original: RelativeFilePathSchema,
+  /** The rebuild's screenshot of the same state, e.g. "preview/hover-0.png". */
+  preview: RelativeFilePathSchema.optional(),
+  /** Mismatched pixels in red, e.g. "diff/hover-0.png". */
+  diff: RelativeFilePathSchema.optional(),
+  /** Share of mismatched pixels, 0 (identical) to 1. Missing when the state could not be shown. */
+  score: z.number().min(0).max(1).optional(),
+  /** Why the state has no score, in plain words. */
+  error: z.string().optional(),
+});
+export type PreviewScore = z.infer<typeof PreviewScoreSchema>;
+
+export const PreviewSchema = z.object({
+  /** "Component.preview.webm". */
+  file: RelativeFilePathSchema.optional(),
+  /** Largest score that still passes. */
+  threshold: z.number().min(0).max(1),
+  scores: z.array(PreviewScoreSchema),
+  /** True when every scored state is at or under the threshold. */
+  passed: z.boolean(),
+  /** "DIFF.md", written when a state is over the threshold. */
+  diffReport: RelativeFilePathSchema.optional(),
+  renderedAt: z.iso.datetime({ offset: true }),
+  warnings: z.array(z.string()).optional(),
+});
+export type Preview = z.infer<typeof PreviewSchema>;
 
 // ─── capture (top level) ─────────────────────────────────────────────────────
 
@@ -441,5 +494,7 @@ export const CaptureSchema = z.object({
   media: MediaSchema.optional(),
   recording: RecordingSchema.optional(),
   job: JobSchema.optional(),
+  rebuild: RebuildSchema.optional(),
+  preview: PreviewSchema.optional(),
 });
 export type Capture = z.infer<typeof CaptureSchema>;

@@ -5,7 +5,8 @@ import { type Capture, CaptureSchema } from "@kinetic/schema";
 import sample from "@kinetic/schema/fixtures/sample-capture.json" with { type: "json" };
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { JobQueue } from "./jobs.ts";
-import { createRecordJob, type Recorder } from "./record-job.ts";
+import { createPreviewJob, createRecordJob, type Recorder } from "./record-job.ts";
+import { createRebuildJob } from "./rebuild.ts";
 import { createApp } from "./server.ts";
 
 const HOST = { host: "127.0.0.1:4517" };
@@ -207,7 +208,9 @@ describe("recording jobs", () => {
     expect(await res.json()).toMatchObject({ ok: true, job: { status: "queued" } });
     await jobs.idle();
     const capture = await readCaptureFile();
-    expect(capture.job?.status).toBe("done");
+    // Recorded and handed off: REBUILD.md is written and the capture waits for a rebuild.
+    expect(capture.job?.status).toBe("awaiting-rebuild");
+    expect(await readFile(path.join(libraryDir, "example.com", "cta-button", "REBUILD.md"), "utf8")).toContain("## Output contract");
     expect(capture.recording?.file).toBe("original.webm");
     expect(capture.media?.original).toBe("original.webm");
     const sampled = capture.motion?.entries.filter((e) => e.source === "sampled") ?? [];
@@ -255,6 +258,90 @@ describe("recording jobs", () => {
     const onBody = await (await saveSample(on.app, { slug: "auto" })).json();
     expect(onBody).toMatchObject({ job: { status: "queued" } });
     await on.jobs.idle();
-    expect((await readCaptureFile("example.com", "auto")).job?.status).toBe("done");
+    expect((await readCaptureFile("example.com", "auto")).job?.status).toBe("awaiting-rebuild");
+  });
+});
+
+describe("rebuild and preview routes", () => {
+  const post = (a: ReturnType<typeof createApp>, url: string, headers: Record<string, string> = {}) =>
+    a.request(url, { method: "POST", headers: { ...HOST, "content-type": "application/json", ...headers }, body: "{}" });
+
+  function rebuildApp(previews: string[] = []) {
+    const jobs = new JobQueue({
+      libraryDir,
+      handlers: {
+        rebuild: createRebuildJob({ settings: { mode: "handoff", autoRebuild: false, model: "claude-opus-5-5", cliTimeoutMs: 1000 } }),
+        preview: createPreviewJob(async (dir) => {
+          previews.push(dir);
+          return { threshold: 0.1, scores: [], passed: true, renderedAt: "2026-11-24T12:00:00.000Z" };
+        }),
+      },
+      onError: () => undefined,
+    });
+    return { jobs, app: createApp({ libraryDir, jobs }) };
+  }
+
+  it("POST rebuild in handoff mode writes REBUILD.md and leaves the capture awaiting a rebuild", async () => {
+    const { app: a, jobs } = rebuildApp();
+    await saveSample(a);
+    const res = await post(a, "/captures/example.com/cta-button/rebuild");
+    expect(res.status).toBe(202);
+    expect(await res.json()).toMatchObject({ ok: true, mode: "handoff", job: { status: "queued" } });
+    await jobs.idle();
+    const capture = await readCaptureFile();
+    expect(capture.job?.status).toBe("awaiting-rebuild");
+    expect(capture.rebuild).toMatchObject({ mode: "handoff", prompt: "REBUILD.md", fixPasses: 0 });
+    expect(await readFile(path.join(libraryDir, "example.com", "cta-button", "REBUILD.md"), "utf8")).toContain("pnpm kinetic preview example.com/cta-button");
+  });
+
+  it("POST preview needs Component.tsx, then queues the preview job", async () => {
+    const previews: string[] = [];
+    const { app: a, jobs } = rebuildApp(previews);
+    await saveSample(a);
+    const missing = await post(a, "/captures/example.com/cta-button/preview");
+    expect(missing.status).toBe(409);
+    expect(previews).toEqual([]);
+
+    await writeFile(path.join(libraryDir, "example.com", "cta-button", "Component.tsx"), "export default () => null;\n");
+    const res = await post(a, "/captures/example.com/cta-button/preview");
+    expect(res.status).toBe(202);
+    await jobs.idle();
+    expect(previews).toEqual([path.join(libraryDir, "example.com", "cta-button")]);
+    expect((await readCaptureFile()).job?.status).toBe("done");
+  });
+
+  it("queues a rebuild after each recording only when auto-rebuild is on", async () => {
+    for (const autoRebuild of [false, true]) {
+      const rebuilds: string[] = [];
+      const jobs = new JobQueue({
+        libraryDir,
+        onError: () => undefined,
+        handlers: {
+          record: createRecordJob(fakeRecorder, { autoRebuild }),
+          rebuild: async ({ slug }) => {
+            rebuilds.push(slug);
+            return "done";
+          },
+        },
+      });
+      const a = createApp({ libraryDir, jobs });
+      await saveSample(a, { slug: `auto-${autoRebuild}` });
+      await post(a, `/captures/example.com/auto-${autoRebuild}/record`);
+      await jobs.idle();
+      expect(rebuilds).toEqual(autoRebuild ? ["auto-true"] : []);
+      expect((await readCaptureFile("example.com", `auto-${autoRebuild}`)).job?.status).toBe(autoRebuild ? "done" : "awaiting-rebuild");
+    }
+  });
+
+  it("rebuild and preview answer 404 for a missing capture, 415 without JSON, and pass the guard", async () => {
+    const { app: a } = rebuildApp();
+    await saveSample(a);
+    for (const action of ["rebuild", "preview"]) {
+      expect((await post(a, `/captures/example.com/missing/${action}`)).status).toBe(404);
+      expect((await a.request(`/captures/example.com/cta-button/${action}`, { method: "POST", headers: HOST })).status).toBe(415);
+      expect((await post(a, `/captures/example.com/cta-button/${action}`, { host: "evil.example:4517" })).status).toBe(403);
+      expect((await post(a, `/captures/example.com/cta-button/${action}`, { origin: "https://evil.example" })).status).toBe(403);
+      expect((await post(a, `/captures/example.com/../${action}`)).status).toBe(404);
+    }
   });
 });

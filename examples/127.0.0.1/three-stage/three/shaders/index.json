@@ -1,0 +1,21 @@
+[
+  {
+    "name": "HeroGlow",
+    "type": "ShaderMaterial",
+    "uuid": "11036894-9c22-44c4-8af2-4bb767ac9522",
+    "vertexShader": "three/shaders/hero-glow-1.vert.glsl",
+    "fragmentShader": "three/shaders/hero-glow-1.frag.glsl",
+    "uniforms": {
+      "uTime": 6.6483,
+      "uColor": "#635bff",
+      "uResolution": [
+        1,
+        1
+      ]
+    },
+    "defines": {},
+    "usedBy": [
+      "Hero"
+    ]
+  }
+]

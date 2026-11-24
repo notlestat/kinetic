@@ -1,11 +1,12 @@
 // The companion's job queue: captures are processed one at a time, in the order
 // they were queued, and each job's status is written to its capture.json as it moves
-// through queued → recording → … → done, or failed with the error.
+// through queued → recording → awaiting-rebuild → rebuilding → previewing → done, or
+// failed with the error.
 
 import type { Job, JobStatus } from "@kinetic/schema";
 import { captureDir, listCaptureRefs, readCapture, updateCapture } from "./library.ts";
 
-export type JobKind = "record";
+export type JobKind = "record" | "rebuild" | "preview";
 
 export interface JobContext {
   site: string;
@@ -14,6 +15,8 @@ export interface JobContext {
   dir: string;
   /** Writes an intermediate status, such as "recording". */
   setStatus(status: JobStatus): Promise<void>;
+  /** Queues another job for the same capture, to run after this one. */
+  enqueue(kind: JobKind): Promise<void>;
 }
 
 /** Does the work and returns the status to finish with. Throwing marks the job failed. */
@@ -118,8 +121,11 @@ export class JobQueue {
     const setStatus = async (status: JobStatus) => {
       await setJob(job.dir, status);
     };
+    const enqueue = async (kind: JobKind) => {
+      await this.enqueue(job.site, job.slug, kind);
+    };
     try {
-      const final = await handler({ site: job.site, slug: job.slug, dir: job.dir, setStatus });
+      const final = await handler({ site: job.site, slug: job.slug, dir: job.dir, setStatus, enqueue });
       await setStatus(final);
     } catch (error) {
       this.#onError(`${job.kind} job failed for ${job.site}/${job.slug}`, error);
@@ -128,11 +134,11 @@ export class JobQueue {
   }
 }
 
-const UNFINISHED: readonly JobStatus[] = ["queued", "recording", "rebuilding"];
+const UNFINISHED: readonly JobStatus[] = ["queued", "recording", "rebuilding", "previewing"];
 
 /**
- * After a restart nothing is running, so a capture still marked queued, recording or
- * rebuilding was interrupted. Marks those failed so the status is not left hanging.
+ * After a restart nothing is running, so a capture still marked queued, recording,
+ * rebuilding or previewing was interrupted. Marks those failed so the status is not left hanging.
  */
 export async function failInterruptedJobs(libraryDir: string): Promise<number> {
   let count = 0;
