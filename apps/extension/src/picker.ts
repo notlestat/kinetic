@@ -1,9 +1,15 @@
 // Picker UI. Lives in a shadow root on its own host element, so site CSS cannot reach it.
 //
 // Hover highlights the element under the cursor. Arrow Up and Arrow Down move the
-// selection to the parent or the first child. Click (or Enter) captures. Esc exits.
+// selection to the parent or the first child. Click (or Enter) captures. Shift with
+// either also reloads the page once to record load animations. Esc exits.
 
 export const PICKER_HOST_TAG = "kinetic-picker";
+
+export interface PickOptions {
+  /** Shift was held: reload the page once to record load animations. */
+  reloadForLoadAnimations: boolean;
+}
 
 const STYLES = `
 :host { all: initial; }
@@ -30,7 +36,7 @@ export class Picker {
   private status = "";
   private busy = false;
 
-  constructor(private readonly onPick: (el: Element) => Promise<void>) {}
+  constructor(private readonly onPick: (el: Element, options: PickOptions) => Promise<void>) {}
 
   get active(): boolean {
     return this.host !== undefined;
@@ -124,7 +130,7 @@ export class Picker {
 
   private readonly onClick = (e: MouseEvent) => {
     this.block(e);
-    void this.pick();
+    void this.pick(e.shiftKey);
   };
 
   private readonly onKey = (e: KeyboardEvent) => {
@@ -140,18 +146,18 @@ export class Picker {
       this.select(this.selected.firstElementChild ?? undefined);
     } else if (e.key === "Enter" && this.selected) {
       this.block(e);
-      void this.pick();
+      void this.pick(e.shiftKey);
     }
   };
 
   private readonly onScroll = () => this.render();
 
-  private async pick(): Promise<void> {
+  private async pick(reloadForLoadAnimations: boolean): Promise<void> {
     const el = this.selected;
     if (!el || this.busy) return;
     this.busy = true;
     try {
-      await this.onPick(el);
+      await this.onPick(el, { reloadForLoadAnimations });
     } finally {
       this.busy = false;
     }
@@ -174,10 +180,12 @@ export class Picker {
     });
     const id = selected.id ? `#${selected.id}` : "";
     const size = `${Math.round(r.width)}×${Math.round(r.height)}`;
-    label.textContent = `${selected.localName}${id}  ${size}${this.status ? `\n${this.status}` : ""}`;
+    label.textContent = `${selected.localName}${id}  ${size}\n${this.status || "Click to capture. Shift+click also records load animations."}`;
     label.style.display = "block";
-    const above = r.top - 28;
+    // The label is two lines or more, so place it by its real height.
+    const height = label.offsetHeight || 44;
+    const above = r.top - height - 4;
     label.style.left = `${Math.max(4, Math.min(r.left, window.innerWidth - 200))}px`;
-    label.style.top = `${above > 4 ? above : Math.min(r.bottom + 4, window.innerHeight - 28)}px`;
+    label.style.top = `${above > 4 ? above : Math.min(r.bottom + 4, window.innerHeight - height - 4)}px`;
   }
 }

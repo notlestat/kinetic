@@ -2,8 +2,8 @@ import { defineConfig } from "@playwright/test";
 import { E2E_LIBRARY_DIR } from "./e2e/paths.ts";
 
 // End-to-end tests: Chromium with the test build of the extension, the local test
-// pages, and a companion that writes to a temp library. One worker, because the
-// companion owns port 4517 and the tests share its library folder.
+// pages, the library UI, and a companion that writes to a temp library. One worker,
+// because the companion owns port 4517 and the tests share its library folder.
 export default defineConfig({
   testDir: "e2e",
   testMatch: "**/*.e2e.ts",
@@ -17,6 +17,13 @@ export default defineConfig({
     {
       command: "pnpm --filter @kinetic/test-pages build && pnpm --filter @kinetic/test-pages preview",
       url: "http://127.0.0.1:5180/index.html",
+      reuseExistingServer: true,
+      timeout: 120_000,
+    },
+    {
+      // The library UI on the port the companion allows CORS from.
+      command: "pnpm --filter @kinetic/library build && pnpm --filter @kinetic/library preview",
+      url: "http://127.0.0.1:5173/",
       reuseExistingServer: true,
       timeout: 120_000,
     },

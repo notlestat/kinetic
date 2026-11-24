@@ -16,8 +16,8 @@ import { Picker } from "./picker.ts";
 const TEST_HOOKS = import.meta.env.MODE !== "production";
 
 export function startContent(): void {
-  const picker = new Picker(async (el) => {
-    await runCapture(el, {}, picker);
+  const picker = new Picker(async (el, { reloadForLoadAnimations }) => {
+    await runCapture(el, { reloadForLoadAnimations }, picker);
   });
 
   browser.runtime.onMessage.addListener((raw: unknown, _sender, sendResponse: (response?: unknown) => void) => {

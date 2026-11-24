@@ -1,8 +1,10 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
+import path from "node:path";
 import { type Capture, CaptureSchema, PathSegmentSchema, RelativeFilePathSchema } from "@kinetic/schema";
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import { corsHeaders, LIBRARY_ORIGINS, libraryMayCall } from "./cors.ts";
 import { contentTypeFor, fileResponse } from "./files.ts";
 import { JobQueue } from "./jobs.ts";
 import {
@@ -20,7 +22,7 @@ import {
 import { type RebuildSettings, rebuildSettings } from "./env.ts";
 import { createPreviewJob, createRecordJob } from "./record-job.ts";
 import { createRebuildJob, loadPreview } from "./rebuild.ts";
-import { componentExists } from "./rebuild-prompt.ts";
+import { COMPONENT_FILE, componentExists, NOTES_FILE, REBUILD_FILE } from "./rebuild-prompt.ts";
 
 export const PORT = 4517;
 export const HOST = "127.0.0.1";
@@ -87,6 +89,43 @@ function mediaUrls(origin: string, capture: Capture): Record<string, string> {
   return Object.fromEntries(Object.entries(capture.media ?? {}).flatMap(([key, file]) => (file ? [[key, fileUrl(origin, site, slug, file)]] : [])));
 }
 
+/** "button-hero" → "ButtonHero". */
+function pascalCase(slug: string): string {
+  return slug
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join("");
+}
+
+/** The root framework component's name when it has a readable one, otherwise the slug in PascalCase. */
+export function componentName(capture: Capture): string {
+  const root = capture.framework?.components.find((c) => c.parentId === null && !c.minified);
+  return root?.name ?? (pascalCase(capture.meta.slug) || capture.meta.slug);
+}
+
+/** NOTES.md is searched by the library's free-text filter, so the list carries its first 20,000 characters. */
+const MAX_NOTES_CHARS = 20_000;
+
+/** NOTES.md's text, resolved like GET /files so a symlink cannot read outside the capture folder. */
+async function readNotes(libraryDir: string, site: string, slug: string): Promise<string | undefined> {
+  try {
+    const file = await resolveCaptureFile(libraryDir, site, slug, NOTES_FILE);
+    return file ? (await readFile(file, "utf8")).slice(0, MAX_NOTES_CHARS) : undefined;
+  } catch {
+    // A missing, unreadable or escaping NOTES.md leaves the capture listed without notes.
+    return undefined;
+  }
+}
+
+/** What to paste into a coding agent in handoff mode. */
+export function handoffInstruction(dir: string, site: string, slug: string): string {
+  return [
+    `Open ${path.join(dir, REBUILD_FILE)} and follow it.`,
+    `Write only ${COMPONENT_FILE} and ${NOTES_FILE} in that folder, then run \`pnpm kinetic preview ${site}/${slug}\` from the Kinetic repo root.`,
+  ].join(" ");
+}
+
 export function createApp({ libraryDir, autoRecord = false, rebuild = DEFAULT_REBUILD_SETTINGS, jobs = defaultJobs(libraryDir, rebuild) }: AppOptions) {
   const app = new Hono();
   // The Host header has passed the guard by the time this is used, so it is one of ALLOWED_HOSTS.
@@ -100,10 +139,19 @@ export function createApp({ libraryDir, autoRecord = false, rebuild = DEFAULT_RE
     }
     // Browsers attach Origin to cross-site requests. No Origin means curl, scripts or tests.
     const origin = c.req.header("origin");
-    if (origin !== undefined && !origin.startsWith("chrome-extension://")) {
-      return c.json({ error: "origin not allowed" }, 403);
+    if (origin === undefined || origin.startsWith("chrome-extension://")) {
+      await next();
+      return;
     }
-    await next();
+    // The library UI gets the read routes and the rebuild and preview routes, with CORS headers.
+    if (LIBRARY_ORIGINS.has(origin) && libraryMayCall(c.req.method, c.req.path, c.req.header("access-control-request-method"))) {
+      const headers = corsHeaders(origin, c.req.path);
+      if (c.req.method === "OPTIONS") return c.body(null, 204, headers);
+      await next();
+      for (const [name, value] of Object.entries(headers)) c.res.headers.set(name, value);
+      return;
+    }
+    return c.json({ error: "origin not allowed" }, 403);
   });
 
   app.onError((error, c) => {
@@ -158,14 +206,18 @@ export function createApp({ libraryDir, autoRecord = false, rebuild = DEFAULT_RE
         captures.push({ site: ref.site, slug: ref.slug, error: "capture.json is not a valid capture" });
         continue;
       }
+      const notes = await readNotes(libraryDir, ref.site, ref.slug);
       captures.push({
         site: ref.site,
         slug: ref.slug,
+        componentName: componentName(capture),
         meta: { url: capture.meta.url, title: capture.meta.title, timestamp: capture.meta.timestamp, selector: capture.meta.selector },
         ...(capture.job ? { job: capture.job } : {}),
         ...(capture.motion?.summary ? { motion: capture.motion.summary } : {}),
         framework: { kind: capture.framework?.kind ?? "none", detected: capture.framework?.detected ?? [] },
         hasThree: capture.three !== undefined,
+        ...(capture.preview ? { preview: { passed: capture.preview.passed, threshold: capture.preview.threshold } } : {}),
+        ...(notes !== undefined ? { notes } : {}),
         media: mediaUrls(origin, capture),
       });
     }
@@ -186,7 +238,14 @@ export function createApp({ libraryDir, autoRecord = false, rebuild = DEFAULT_RE
     }
     const origin = originOf(c);
     const files = (await listCaptureFiles(dir)).map((f) => ({ ...f, url: fileUrl(origin, site, slug, f.path), contentType: contentTypeFor(f.path) }));
-    return c.json({ capture, media: mediaUrls(origin, capture), files });
+    return c.json({
+      capture,
+      componentName: componentName(capture),
+      media: mediaUrls(origin, capture),
+      files,
+      // The library's rebuild panel: which mode the companion runs and what to hand an agent.
+      rebuild: { mode: rebuild.mode, folder: dir, handoff: handoffInstruction(dir, site, slug) },
+    });
   });
 
   // A file inside a capture folder. Every segment is decoded and checked, then the real path must stay inside the folder.

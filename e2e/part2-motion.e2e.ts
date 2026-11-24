@@ -1,5 +1,8 @@
+import { readdir } from "node:fs/promises";
+import path from "node:path";
 import type { MotionEntry } from "@kinetic/schema";
-import { captureSelector, expect, openTestPage, readCaptureJson, test } from "./fixtures.ts";
+import { captureSelector, expect, kineticCall, openTestPage, readCaptureJson, test } from "./fixtures.ts";
+import { E2E_LIBRARY_DIR } from "./paths.ts";
 
 const SITE = "127.0.0.1";
 
@@ -117,4 +120,31 @@ test("reloads to record GSAP load animations when the user opts in", async ({ pa
   expect(hero?.target.split(", ")).toHaveLength(3);
   expect(hero?.properties.find((p) => p.name === "y")?.keyframes).toEqual([{ offset: 0, value: 40 }, { offset: 1, value: 0 }]);
   expect(hero?.properties.find((p) => p.name === "opacity")?.keyframes).toEqual([{ offset: 0, value: 0 }, { offset: 1, value: 1 }]);
+});
+
+test("Shift+Enter in the picker opts into the reload for load animations", async ({ page }) => {
+  const folders = () => readdir(path.join(E2E_LIBRARY_DIR, SITE)).catch((): string[] => []);
+  const before = new Set(await folders());
+  await openTestPage(page, "gsap.html");
+  await kineticCall(page, "test:picker");
+  const item = await page.locator("div.hero-item").first().boundingBox();
+  if (!item) throw new Error("hero item is not visible");
+  await page.mouse.move(item.x + 10, item.y + 10);
+  await expect(page.locator("kinetic-picker .label")).toContainText("Shift+click also records load animations");
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator("kinetic-picker .label")).toHaveText(/^section\s+/);
+  // A reload clears this marker, so it shows the capture really reloaded the page.
+  await page.evaluate(() => Object.assign(window, { kineticBeforeReload: true }));
+  await page.keyboard.press("Shift+Enter");
+
+  // The picker's slug ends in a timestamp, so look for a new folder with the expected prefix.
+  const slug = async () => (await folders()).find((name) => name.startsWith("section-hero-") && !before.has(name));
+  await expect.poll(async () => {
+    const found = await slug();
+    return found ? readCaptureJson(SITE, found).then(() => true, () => false) : false;
+  }, { timeout: 60_000 }).toBe(true);
+  const capture = await readCaptureJson(SITE, (await slug()) as string);
+  const [hero] = find(capture.motion?.entries ?? [], { source: "gsap", targetIncludes: "div.hero-item" });
+  expect(hero).toMatchObject({ trigger: "load", duration: 600, stagger: 100 });
+  await expect.poll(() => page.evaluate(() => "kineticBeforeReload" in window).catch(() => true)).toBe(false);
 });

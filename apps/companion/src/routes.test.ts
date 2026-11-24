@@ -345,3 +345,112 @@ describe("rebuild and preview routes", () => {
     }
   });
 });
+
+describe("the library UI origin", () => {
+  const LIBRARY = "http://127.0.0.1:5173";
+  const json = { ...HOST, "content-type": "application/json" };
+
+  it("reads the list, one capture and its files, with CORS headers for either library origin", async () => {
+    const { app: a } = app();
+    await saveSample(a);
+    const dir = path.join(libraryDir, "example.com", "cta-button");
+    await writeFile(path.join(dir, "NOTES.md"), "# Taste\n\nSoft lift on hover, springy press.\n");
+    for (const origin of [LIBRARY, "http://localhost:5173"]) {
+      const list = await a.request("/captures", { headers: { ...HOST, origin } });
+      expect(list.status).toBe(200);
+      expect(list.headers.get("access-control-allow-origin")).toBe(origin);
+      expect(list.headers.get("vary")).toBe("Origin");
+      const [item] = ((await list.json()) as { captures: { componentName: string; notes?: string }[] }).captures;
+      expect(item?.componentName).toBe("CtaButton");
+      expect(item?.notes).toContain("springy press");
+    }
+
+    const detail = await a.request("/captures/example.com/cta-button", { headers: { ...HOST, origin: LIBRARY } });
+    expect(detail.headers.get("access-control-allow-origin")).toBe(LIBRARY);
+    const body = (await detail.json()) as { rebuild: { mode: string; folder: string; handoff: string } };
+    expect(body.rebuild).toEqual({
+      mode: "handoff",
+      folder: dir,
+      handoff: `Open ${path.join(dir, "REBUILD.md")} and follow it. Write only Component.tsx and NOTES.md in that folder, then run \`pnpm kinetic preview example.com/cta-button\` from the Kinetic repo root.`,
+    });
+
+    const file = await a.request("/files/example.com/cta-button/NOTES.md", { headers: { ...HOST, origin: LIBRARY } });
+    expect(file.status).toBe(200);
+    expect(file.headers.get("access-control-allow-origin")).toBe(LIBRARY);
+    expect(file.headers.get("access-control-expose-headers")).toContain("content-range");
+  });
+
+  it("answers the preflight for rebuild and preview, then starts them", async () => {
+    const previews: string[] = [];
+    const jobs = new JobQueue({
+      libraryDir,
+      onError: () => undefined,
+      handlers: {
+        rebuild: createRebuildJob({ settings: { mode: "handoff", autoRebuild: false, model: "claude-opus-5-5", cliTimeoutMs: 1000 } }),
+        preview: createPreviewJob(async (dir) => {
+          previews.push(dir);
+          return { threshold: 0.1, scores: [], passed: true, renderedAt: "2026-11-24T12:00:00.000Z" };
+        }),
+      },
+    });
+    const a = createApp({ libraryDir, jobs });
+    await saveSample(a);
+    await writeFile(path.join(libraryDir, "example.com", "cta-button", "Component.tsx"), "export default () => null;\n");
+    for (const action of ["rebuild", "preview"]) {
+      const url = `/captures/example.com/cta-button/${action}`;
+      const preflight = await a.request(url, {
+        method: "OPTIONS",
+        headers: { ...HOST, origin: LIBRARY, "access-control-request-method": "POST", "access-control-request-headers": "content-type" },
+      });
+      expect(preflight.status).toBe(204);
+      expect(preflight.headers.get("access-control-allow-origin")).toBe(LIBRARY);
+      expect(preflight.headers.get("access-control-allow-methods")).toBe("POST");
+      expect(preflight.headers.get("access-control-allow-headers")).toContain("content-type");
+
+      const res = await a.request(url, { method: "POST", headers: { ...json, origin: LIBRARY }, body: "{}" });
+      expect(res.status).toBe(202);
+      expect(res.headers.get("access-control-allow-origin")).toBe(LIBRARY);
+      await jobs.idle();
+    }
+    expect(previews).toHaveLength(1);
+    expect(await readFile(path.join(libraryDir, "example.com", "cta-button", "REBUILD.md"), "utf8")).toContain("# Rebuild");
+  });
+
+  it("keeps POST /capture, /capture/file and record extension-only, and refuses other local ports", async () => {
+    const { app: a } = app();
+    await saveSample(a);
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString("base64");
+    const writes: [string, unknown][] = [
+      ["/capture", sample],
+      ["/capture/file", { site: "example.com", slug: "cta-button", path: "states/x.png", contentBase64: png }],
+      ["/captures/example.com/cta-button/record", {}],
+    ];
+    for (const [url, body] of writes) {
+      const res = await a.request(url, { method: "POST", headers: { ...json, origin: LIBRARY }, body: JSON.stringify(body) });
+      expect(res.status).toBe(403);
+      expect(res.headers.get("access-control-allow-origin")).toBeNull();
+      const preflight = await a.request(url, { method: "OPTIONS", headers: { ...HOST, origin: LIBRARY, "access-control-request-method": "POST" } });
+      expect(preflight.status).toBe(403);
+      expect(preflight.headers.get("access-control-allow-origin")).toBeNull();
+    }
+    // GET-only routes refuse a preflight for POST, and the extension still writes.
+    expect((await a.request("/captures", { method: "OPTIONS", headers: { ...HOST, origin: LIBRARY, "access-control-request-method": "POST" } })).status).toBe(403);
+    expect((await a.request("/capture", { method: "POST", headers: { ...json, origin: "chrome-extension://abcdefghijklmnop" }, body: JSON.stringify(sample) })).status).toBe(201);
+    for (const origin of ["http://127.0.0.1:5174", "http://evil.example:5173", "https://127.0.0.1:5173"]) {
+      expect((await a.request("/captures", { headers: { ...HOST, origin } })).status).toBe(403);
+    }
+  });
+});
+
+describe("NOTES.md in the capture list", () => {
+  it("does not follow a NOTES.md symlink out of the capture folder", async () => {
+    const { app: a } = app();
+    await saveSample(a);
+    await writeFile(path.join(outside, "secret.md"), "secret notes");
+    await symlink(path.join(outside, "secret.md"), path.join(libraryDir, "example.com", "cta-button", "NOTES.md"));
+    const list = (await (await a.request("/captures", { headers: HOST })).json()) as { captures: { notes?: string; componentName: string }[] };
+    expect(list.captures[0]?.notes).toBeUndefined();
+    const detail = (await (await a.request("/captures/example.com/cta-button", { headers: HOST })).json()) as { componentName: string };
+    expect(detail.componentName).toBe("CtaButton");
+  });
+});
