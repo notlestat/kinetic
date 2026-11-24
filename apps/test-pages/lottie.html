@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lottie test page</title>
+    <script type="module" src="/src/fonts.ts"></script>
+    <style>
+      .badge { display: flex; align-items: center; gap: 16px; padding: 24px; border-radius: 16px; background: #fff; }
+      .pulse { width: 120px; height: 120px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Lottie</h1>
+      <section class="badge">
+        <div class="pulse" aria-hidden="true"></div>
+        <p>A looping pulse, played by lottie-web from a JSON file.</p>
+      </section>
+    </main>
+    <script type="module" src="/src/lottie-page.ts"></script>
+  </body>
+</html>

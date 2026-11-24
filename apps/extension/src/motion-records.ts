@@ -2,7 +2,9 @@
 // motion-normalise.ts turns them into MotionEntry objects.
 
 import type { SmoothScroll } from "@kinetic/schema";
+import type { AssetRecord } from "./asset-records.ts";
 import type { FramerRecord } from "./framer-motion.ts";
+import type { CameraPath } from "./three-scene.ts";
 
 export type KeyframeRecord = Record<string, string | number | null>;
 
@@ -124,6 +126,12 @@ export interface MainWorldMotion {
   smoothScroll: SmoothScroll | undefined;
   /** Framer Motion components in the selection, read from React fiber props. Missing in older fixtures. */
   framer?: FramerRecord[];
+  /** Transforms sampled from three.js renders, when the selection shows a three.js canvas. */
+  three?: CameraPath;
+  /** Lottie, dotLottie, Rive and Spline assets shown in the selection. */
+  assets?: AssetRecord[];
+  /** Elements that show an animation asset whose URL the MAIN world could not find. The Network domain may. */
+  unresolvedAssets?: { kind: AssetRecord["kind"]; target: string }[];
 }
 
 /** CSS motion read from computed styles and stylesheets in the content script. */

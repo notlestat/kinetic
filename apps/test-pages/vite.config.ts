@@ -21,7 +21,8 @@ export default defineConfig({
     __VUE_PROD_DEVTOOLS__: "false",
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: "false",
   },
-  build: { rollupOptions: { input } },
+  // three.js alone is about 740 kB; these pages are only served locally.
+  build: { rollupOptions: { input }, chunkSizeWarningLimit: 1000 },
   server: { host: "127.0.0.1", port: TEST_PAGES_PORT, strictPort: true },
   preview: { host: "127.0.0.1", port: TEST_PAGES_PORT, strictPort: true },
 });

@@ -8,8 +8,10 @@
 import type { Motion, MotionEntry, MotionTrigger, State } from "@kinetic/schema";
 import { gsapEaseToBezier, parseCssEasing } from "@kinetic/schema/easing";
 import { summariseMotion } from "@kinetic/schema/motion-summary";
+import { type AssetRecord, fromAssetRecords } from "./asset-records.ts";
 import { camelToKebab, listItem, parseCssTime } from "./css-list.ts";
 import { fromFramerRecords } from "./framer-motion.ts";
+import { fromCameraPath } from "./three-motion.ts";
 import type {
   AnimationRecord,
   CssMotionReport,
@@ -322,6 +324,8 @@ export interface MotionInputs {
   /** What the MAIN world saw start during each hover, focus or reload of the motion pass. */
   passes: readonly { trigger: MotionTrigger; motion: MainWorldMotion | undefined }[];
   css: CssMotionReport;
+  /** Assets the Network domain caught during the capture, merged over the MAIN world's by URL. */
+  assets?: readonly AssetRecord[];
   /** Full computed styles at rest, from the state capture. */
   baseline: Readonly<Record<string, StyleMap>>;
   states: readonly State[];
@@ -405,6 +409,8 @@ export function buildMotion(inputs: MotionInputs): Motion {
       .filter((d) => !waapiFromFramer(d)),
     fromGsapRecords(gsap, scrollTriggers),
     framer,
+    startMotion?.three ? fromCameraPath(startMotion.three) : [],
+    fromAssetRecords(inputs.assets ?? startMotion?.assets ?? []),
     fromCssReport(inputs.css, inputs.baseline, inputs.states),
   );
 

@@ -98,7 +98,9 @@ export async function collectCapture(
   const report = await requestMainWorldReport(root, rootSelector);
   if (report) {
     Object.assign(capture, report.sections);
-    for (const file of report.files) files.push({ path: file.path, contentBase64: textToBase64(file.text) });
+    for (const file of report.files) {
+      files.push({ path: file.path, contentBase64: "base64" in file ? file.base64 : textToBase64(file.text) });
+    }
   }
 
   current = { root, nodes };

@@ -1,8 +1,10 @@
 // Background service worker: chrome.debugger (CDP), screenshots, and sending captures to the companion.
 
 import { browser } from "wxt/browser";
+import { type AssetRecord, toAssetsBlock } from "./asset-records.ts";
 import { CdpSession } from "./cdp.ts";
 import { MotionPass, type PassHooks, type PassResult } from "./cdp-motion.ts";
+import { type NetworkAsset, NetworkRecorder, resolveNetworkAssets } from "./cdp-network.ts";
 import { deliver, pendingCount, RETRY_ALARM, retryPending, setCompanionUrlForTests } from "./companion-client.ts";
 import type { CaptureOutcome, CaptureSubmission, RuntimeMessage } from "./messages.ts";
 import type { MainWorldMotion } from "./motion-records.ts";
@@ -93,7 +95,10 @@ async function runCapture(tabId: number, submission: CaptureSubmission): Promise
 
   let states: StateCaptureResult | undefined;
   const passes: PassResult[] = [];
+  let networkAssets: NetworkAsset[] = [];
   if (session) {
+    const network = new NetworkRecorder(session);
+    await network.start();
     try {
       states = await captureStates(session, rootSelector, interactive);
       capture.states = states.states;
@@ -109,15 +114,26 @@ async function runCapture(tabId: number, submission: CaptureSubmission): Promise
       const pass = new MotionPass(session, hooks);
       passes.push(...(await pass.fireStates(interactive)));
       if (submission.options.reloadForLoadAnimations) passes.push(...(await pass.reloadForLoadAnimations()));
+      networkAssets = await network.finish(submission.motion?.assets?.length ?? 0);
     } finally {
       await session.detach();
     }
   }
 
+  // Animation assets: what the MAIN world found, completed by what the Network domain caught.
+  let assets: AssetRecord[] = submission.motion?.assets ?? [];
+  if (networkAssets.length > 0) {
+    const resolved = resolveNetworkAssets(assets, submission.motion?.unresolvedAssets ?? [], networkAssets);
+    assets = resolved.records;
+    files.push(...resolved.files);
+  }
+  if (assets.length > 0) capture.assets = { files: toAssetsBlock(assets) };
+
   const motionInputs = {
     atStart: submission.motion,
     passes,
     css: submission.cssMotion,
+    assets,
     baseline: states?.baseline.styles ?? {},
     states: capture.states ?? [],
   };

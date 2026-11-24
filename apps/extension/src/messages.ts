@@ -67,7 +67,8 @@ export function bytesToBase64(bytes: Uint8Array): string {
  */
 export interface MainWorldReport {
   sections: Partial<Pick<Capture, "framework" | "three" | "assets">>;
-  files: { path: string; text: string }[];
+  /** Text files, or binary files (downloaded assets) as base64. */
+  files: ({ path: string; text: string } | { path: string; base64: string })[];
   /** Raw motion records. The background normalises them together with the Animation domain's. */
   motion?: MainWorldMotion;
 }

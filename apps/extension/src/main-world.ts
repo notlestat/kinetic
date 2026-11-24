@@ -2,13 +2,22 @@
 // must never throw into page code: wrap every hook in try/catch, and never change
 // what the page renders.
 
-import type { Framework, SmoothScroll } from "@kinetic/schema";
+import type { Framework, SmoothScroll, Three } from "@kinetic/schema";
+import {
+  type AssetPlayback,
+  type AssetRecord,
+  assetFileName,
+  assetKindForUrl,
+  isLottieJson,
+  lottieTiming,
+  toAssetsBlock,
+} from "./asset-records.ts";
 import { sanitizeValue } from "./component-props.ts";
 import { type DomChild, splitFromComponents, splitFromDom } from "./component-split.ts";
 import { type FlatComponent, flattenTree, type TreeNode, toFrameworkComponents } from "./component-tree.ts";
 import { detectFrameworks } from "./framework-detect.ts";
 import { collectFramerRecords } from "./framer-motion.ts";
-import { isKineticMessage, type MainWorldReport, postToWindow, ROOT_ATTRIBUTE } from "./messages.ts";
+import { bytesToBase64, isKineticMessage, type MainWorldReport, postToWindow, ROOT_ATTRIBUTE } from "./messages.ts";
 import { type AnimationRecord, type GsapRecord, readAnimationRecord, type ScrollTriggerRecord } from "./motion-records.ts";
 import {
   containerFiber,
@@ -22,6 +31,16 @@ import {
   startFiber,
 } from "./react-tree.ts";
 import { uniqueSelector } from "./selector.ts";
+import {
+  type CameraPath,
+  type CameraSample,
+  shaderSlug,
+  shadowMapTypeName,
+  stripSceneJson,
+  type TransformSample,
+  toneMappingName,
+  uniformValue,
+} from "./three-scene.ts";
 import { type InstanceLike, readVue2Tree, readVue3Tree, type VNodeLike, type Vue2InstanceLike, vue2Ancestor } from "./vue-tree.ts";
 
 /**
@@ -69,6 +88,8 @@ export function startMainWorld(): void {
   }
   const installers = [
     installReactHook,
+    installThreeHook,
+    installWebglHooks,
     installBridge,
     () => installAnimationWatcher(loadCapture),
     () => installGsapLoadRecording(loadCapture),
@@ -839,4 +860,687 @@ addCollector("framework", ({ root, mode, report }) => {
     detected,
     ...(detected.some((d) => d.name === "react") ? { hook: reactHookState() } : {}),
   };
+});
+
+// ─── three.js: __THREE_DEVTOOLS__ ─────────────────────────────────────────────
+// three.js dispatches "register" (with its revision) on window.__THREE_DEVTOOLS__
+// when it loads, and "observe" from every Scene and WebGLRenderer constructor.
+// Kinetic defines the EventTarget at document_start (or listens on an existing
+// one) and keeps weak references, so nothing stays alive because of Kinetic.
+
+interface Vec3Like {
+  x: number;
+  y: number;
+  z: number;
+}
+interface ThreeColor {
+  isColor: true;
+  getHexString(): string;
+}
+interface ThreeMaterial {
+  isShaderMaterial?: boolean;
+  isRawShaderMaterial?: boolean;
+  type: string;
+  name: string;
+  uuid: string;
+  vertexShader?: string;
+  fragmentShader?: string;
+  uniforms?: Record<string, { value: unknown }>;
+  defines?: Record<string, unknown>;
+}
+interface ThreeObject {
+  isObject3D: true;
+  isScene?: boolean;
+  isMesh?: boolean;
+  isLight?: boolean;
+  isCamera?: boolean;
+  isPerspectiveCamera?: boolean;
+  type: string;
+  name: string;
+  uuid: string;
+  parent: ThreeObject | null;
+  children: ThreeObject[];
+  position: Vec3Like;
+  rotation: Vec3Like;
+  scale: Vec3Like;
+  matrixWorld: { elements: number[] };
+  material?: ThreeMaterial | ThreeMaterial[];
+  color?: ThreeColor;
+  intensity?: number;
+  castShadow?: boolean;
+  fov?: number;
+  zoom?: number;
+  near?: number;
+  far?: number;
+  fog?: { isFog?: boolean; isFogExp2?: boolean; color: ThreeColor; near?: number; far?: number; density?: number } | null;
+  traverse(callback: (object: ThreeObject) => void): void;
+  toJSON(): Record<string, unknown>;
+  updateMatrixWorld?(force?: boolean): void;
+}
+interface ThreeRenderer {
+  domElement: HTMLCanvasElement;
+  render(scene: unknown, camera: unknown): unknown;
+  toneMapping?: number;
+  toneMappingExposure?: number;
+  outputColorSpace?: string;
+  getPixelRatio?(): number;
+  getRenderTarget?(): unknown;
+  getClearAlpha?(): number;
+  shadowMap?: { enabled: boolean; type: number };
+}
+
+const three = {
+  revision: undefined as string | undefined,
+  scenes: new Set<WeakRef<ThreeObject>>(),
+  renderers: new Set<WeakRef<ThreeRenderer>>(),
+};
+
+function liveRefs<T extends object>(refs: Set<WeakRef<T>>): T[] {
+  const out: T[] = [];
+  for (const ref of refs) {
+    const value = ref.deref();
+    if (value) out.push(value);
+    else refs.delete(ref);
+  }
+  return out;
+}
+
+function installThreeHook(): void {
+  const w = window as { __THREE_DEVTOOLS__?: EventTarget };
+  let target = w.__THREE_DEVTOOLS__;
+  if (target === undefined) {
+    target = new EventTarget();
+    Object.defineProperty(window, "__THREE_DEVTOOLS__", { value: target, configurable: true, enumerable: false, writable: true });
+  }
+  if (typeof target.addEventListener !== "function") return; // Something else owns the name; leave it alone.
+  target.addEventListener("register", (event) => {
+    try {
+      const revision = (event as CustomEvent<{ revision?: unknown }>).detail?.revision;
+      if (revision !== undefined) three.revision = String(revision);
+    } catch {
+      // Never break the site.
+    }
+  });
+  target.addEventListener("observe", (event) => {
+    try {
+      const detail = (event as CustomEvent<unknown>).detail as Partial<ThreeObject & ThreeRenderer> | null;
+      if (!detail || typeof detail !== "object") return;
+      if (detail.isScene) three.scenes.add(new WeakRef(detail as ThreeObject));
+      else if (typeof detail.render === "function" && detail.domElement instanceof HTMLCanvasElement) {
+        three.renderers.add(new WeakRef(detail as ThreeRenderer));
+      }
+    } catch {
+      // Never break the site.
+    }
+  });
+}
+
+/** True when el is inside the selection, contains it, or their boxes overlap on screen. */
+function overlaps(root: Element, el: Element): boolean {
+  if (inside(root, el) || el.contains(root)) return true;
+  const a = root.getBoundingClientRect();
+  const b = el.getBoundingClientRect();
+  return b.width > 0 && b.height > 0 && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+}
+
+const r4 = (n: number) => Math.round(n * 10_000) / 10_000;
+const vec = (v: Vec3Like): [number, number, number] => [r4(v.x), r4(v.y), r4(v.z)];
+
+function transformOf(object: ThreeObject): TransformSample {
+  return { position: vec(object.position), rotation: vec(object.rotation), scale: vec(object.scale) };
+}
+
+function cameraSample(camera: ThreeObject): CameraSample {
+  return {
+    position: vec(camera.position),
+    rotation: vec(camera.rotation),
+    ...(typeof camera.fov === "number" ? { fov: r4(camera.fov) } : {}),
+    ...(typeof camera.zoom === "number" ? { zoom: r4(camera.zoom) } : {}),
+  };
+}
+
+/** Named objects anywhere in the scene, then unnamed top-level children, up to 30. */
+function trackedObjects(scene: ThreeObject): [string, ThreeObject][] {
+  const out: [string, ThreeObject][] = [];
+  const seen = new Set<ThreeObject>();
+  scene.traverse((object) => {
+    if (out.length >= 30 || object === scene || object.isCamera || !object.name) return;
+    out.push([object.name, object]);
+    seen.add(object);
+  });
+  scene.children.forEach((child, i) => {
+    if (out.length < 30 && !seen.has(child) && !child.isCamera) out.push([`${child.type}#${i}`, child]);
+  });
+  return out;
+}
+
+function sampleObjects(tracked: readonly [string, ThreeObject][]): Record<string, TransformSample> {
+  const objects: Record<string, TransformSample> = {};
+  for (const [name, object] of tracked) objects[name] = transformOf(object);
+  return objects;
+}
+
+/** World position and view direction from a camera's world matrix (three.js matrices are column-major). */
+function cameraBlock(camera: ThreeObject): NonNullable<Three["camera"]> {
+  camera.updateMatrixWorld?.(true);
+  const e = camera.matrixWorld.elements;
+  const position: [number, number, number] = [r4(e[12] ?? 0), r4(e[13] ?? 0), r4(e[14] ?? 0)];
+  let d = [-(e[8] ?? 0), -(e[9] ?? 0), -(e[10] ?? 1)];
+  const length = Math.hypot(d[0] ?? 0, d[1] ?? 0, d[2] ?? 0) || 1;
+  d = d.map((x) => x / length);
+  const along = -(position[0] * (d[0] ?? 0) + position[1] * (d[1] ?? 0) + position[2] * (d[2] ?? 0));
+  const t = along > 0 ? along : Math.hypot(...position);
+  return {
+    type: camera.type,
+    ...(typeof camera.fov === "number" ? { fov: camera.fov } : {}),
+    ...(typeof camera.zoom === "number" ? { zoom: camera.zoom } : {}),
+    ...(typeof camera.near === "number" ? { near: camera.near } : {}),
+    ...(typeof camera.far === "number" ? { far: camera.far } : {}),
+    position,
+    rotation: vec(camera.rotation),
+    direction: [r4(d[0] ?? 0), r4(d[1] ?? 0), r4(d[2] ?? 0)],
+    target: [r4(position[0] + (d[0] ?? 0) * t), r4(position[1] + (d[1] ?? 0) * t), r4(position[2] + (d[2] ?? 0) * t)],
+  };
+}
+
+function hexOf(color: ThreeColor | undefined): string | undefined {
+  try {
+    return color?.isColor ? `#${color.getHexString()}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** How long renders are sampled for the camera path. */
+const THREE_RECORD_MS = 3000;
+const THREE_SCROLL_STEPS = 8;
+const THREE_SCROLL_SETTLE_MS = 350;
+const MAX_FRAMES = 240;
+
+const sleepMs = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+interface RenderRecording {
+  scene: ThreeObject;
+  camera: ThreeObject;
+  path: CameraPath;
+  postProcessing: string[];
+}
+
+/**
+ * Wraps renderer.render for a few seconds, recording which scene and camera it
+ * draws and the transforms of tracked objects on each render, then scrolls the
+ * page in steps and samples again. Restores render and the scroll position.
+ */
+async function recordRenders(renderer: ThreeRenderer, canvasSelector: string): Promise<RenderRecording | undefined> {
+  const original = renderer.render;
+  const perScene = new Map<ThreeObject, { camera: ThreeObject; count: number; tracked: [string, ThreeObject][] }>();
+  const frames: CameraPath["frames"] = [];
+  const passes: string[] = [];
+  let main: ThreeObject | undefined;
+  let started: number | undefined;
+  let latest: { camera: CameraSample; objects: Record<string, TransformSample> } | undefined;
+
+  const wrapper = function (this: unknown, scene: unknown, camera: unknown) {
+    try {
+      const s = scene as ThreeObject | null;
+      const c = camera as ThreeObject | null;
+      if (s?.isObject3D && c?.isCamera) {
+        let entry = perScene.get(s);
+        if (s.isScene && !entry) {
+          entry = { camera: c, count: 0, tracked: trackedObjects(s) };
+          perScene.set(s, entry);
+        }
+        if (entry && s.isScene && entry.tracked.length + 1 > 0) {
+          entry.count++;
+          entry.camera = c;
+          // The scene drawn most often is the main one; samples follow it.
+          if (!main || entry.count > (perScene.get(main)?.count ?? 0)) main = s;
+          if (s === main) {
+            const now = performance.now();
+            started ??= now;
+            latest = { camera: cameraSample(c), objects: sampleObjects(entry.tracked) };
+            if (frames.length < MAX_FRAMES && phase === "time") frames.push({ t: Math.round(now - started), ...latest });
+            if (renderer.getRenderTarget?.()) pushPass("RenderPass");
+          }
+        }
+        if (s !== main) {
+          // Post-processing draws full-screen quads: a bare mesh, or a scene holding one mesh.
+          const mesh = s.isMesh ? s : s.children.length === 1 && s.children[0]?.isMesh ? s.children[0] : undefined;
+          const material = mesh?.material;
+          const first = Array.isArray(material) ? material[0] : material;
+          if (first) pushPass(first.name || first.type);
+        }
+      }
+    } catch {
+      // Recording must never stop the render.
+    }
+    return original.call(this, scene, camera);
+  };
+  const pushPass = (label: string) => {
+    if (!passes.includes(label)) passes.push(label);
+  };
+
+  let phase: "time" | "scroll" = "time";
+  const scrolling = document.scrollingElement ?? document.documentElement;
+  const startScroll = { x: window.scrollX, y: window.scrollY };
+  renderer.render = wrapper;
+  const steps: NonNullable<CameraPath["scroll"]>["steps"] = [];
+  let maxScroll = 0;
+  try {
+    await sleepMs(THREE_RECORD_MS);
+    phase = "scroll";
+    maxScroll = Math.max(0, scrolling.scrollHeight - window.innerHeight);
+    if (maxScroll > 0) {
+      for (let i = 0; i <= THREE_SCROLL_STEPS; i++) {
+        const y = Math.round((maxScroll * i) / THREE_SCROLL_STEPS);
+        window.scrollTo({ top: y, left: startScroll.x, behavior: "instant" });
+        await sleepMs(THREE_SCROLL_SETTLE_MS);
+        if (latest) steps.push({ scrollY: Math.round(window.scrollY), progress: r4(window.scrollY / maxScroll), ...latest });
+      }
+    }
+  } finally {
+    if (renderer.render === wrapper) renderer.render = original;
+    window.scrollTo({ top: startScroll.y, left: startScroll.x, behavior: "instant" });
+  }
+  // Let scroll-driven scenes render back to where the user left them before the camera is read.
+  if (steps.length > 0) await sleepMs(THREE_SCROLL_SETTLE_MS);
+  if (!main) return undefined;
+  const camera = perScene.get(main)?.camera;
+  if (!camera) return undefined;
+  const firstRender = passes.indexOf("RenderPass");
+  return {
+    scene: main,
+    camera,
+    path: {
+      canvas: canvasSelector,
+      durationMs: THREE_RECORD_MS,
+      frames,
+      ...(steps.length >= 2 ? { scroll: { maxScroll, steps } } : {}),
+    },
+    // Only a scene drawn into a render target, or extra full-screen draws, means post-processing.
+    postProcessing: firstRender >= 0 || passes.length > 0 ? passes : [],
+  };
+}
+
+function materialsOf(scene: ThreeObject): { material: ThreeMaterial; users: string[] }[] {
+  const byId = new Map<string, { material: ThreeMaterial; users: string[] }>();
+  scene.traverse((object) => {
+    const list = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
+    for (const material of list) {
+      const entry = byId.get(material.uuid) ?? { material, users: [] };
+      if (object.name && entry.users.length < 10) entry.users.push(object.name);
+      byId.set(material.uuid, entry);
+    }
+  });
+  return [...byId.values()];
+}
+
+addCollector("three", async ({ root, mode, report }) => {
+  if (mode !== "full") return;
+  const renderer = liveRefs(three.renderers).find((r) => r.domElement.isConnected && overlaps(root, r.domElement));
+  if (!renderer) return;
+  const canvas = uniqueSelector(renderer.domElement);
+  const recording = await recordRenders(renderer, canvas);
+  if (!recording) return;
+  const { scene, camera, path, postProcessing } = recording;
+
+  const block: Three = { shaderFiles: [], canvas };
+  if (three.revision ?? (window as { __THREE__?: unknown }).__THREE__) block.revision = String(three.revision ?? (window as { __THREE__?: unknown }).__THREE__);
+
+  // scene.json, with big binary data left out.
+  try {
+    const json = scene.toJSON();
+    const stripped = stripSceneJson(json);
+    report.files.push({ path: "three/scene.json", text: JSON.stringify(json) });
+    block.sceneFile = "three/scene.json";
+    if (stripped.length > 0) block.stripped = stripped;
+  } catch {
+    // A scene with cyclic userData cannot be serialised; the rest of the block still helps.
+  }
+
+  // Shaders from ShaderMaterial and RawShaderMaterial, with an index of their uniforms.
+  const index: Record<string, unknown>[] = [];
+  materialsOf(scene).forEach(({ material, users }) => {
+    if (!material.isShaderMaterial) return;
+    const slug = shaderSlug(material.name, material.type, index.length);
+    const vertex = `three/shaders/${slug}.vert.glsl`;
+    const fragment = `three/shaders/${slug}.frag.glsl`;
+    report.files.push({ path: vertex, text: material.vertexShader ?? "" }, { path: fragment, text: material.fragmentShader ?? "" });
+    block.shaderFiles.push(vertex, fragment);
+    const uniforms: Record<string, unknown> = {};
+    for (const [name, uniform] of Object.entries(material.uniforms ?? {})) uniforms[name] = uniformValue(uniform?.value);
+    index.push({
+      name: material.name,
+      type: material.type,
+      uuid: material.uuid,
+      vertexShader: vertex,
+      fragmentShader: fragment,
+      uniforms,
+      defines: sanitize(material.defines ?? {}),
+      usedBy: users,
+    });
+  });
+  if (index.length > 0) {
+    report.files.push({ path: "three/shaders/index.json", text: JSON.stringify(index, null, 2) });
+    block.shaderIndexFile = "three/shaders/index.json";
+  }
+
+  block.camera = cameraBlock(camera);
+  const lights: NonNullable<Three["lights"]> = [];
+  scene.traverse((object) => {
+    if (!object.isLight || lights.length >= 20) return;
+    const e = object.matrixWorld.elements;
+    const color = hexOf(object.color);
+    lights.push({
+      type: object.type,
+      ...(object.name ? { name: object.name } : {}),
+      ...(color ? { color } : {}),
+      ...(typeof object.intensity === "number" ? { intensity: object.intensity } : {}),
+      position: [r4(e[12] ?? 0), r4(e[13] ?? 0), r4(e[14] ?? 0)],
+      ...(typeof object.castShadow === "boolean" ? { castShadow: object.castShadow } : {}),
+    });
+  });
+  block.lights = lights;
+  const fog = scene.fog;
+  if (fog) {
+    const color = hexOf(fog.color) ?? "#000000";
+    block.fog = fog.isFogExp2
+      ? { type: "FogExp2", color, ...(typeof fog.density === "number" ? { density: fog.density } : {}) }
+      : { type: "Fog", color, ...(typeof fog.near === "number" ? { near: fog.near } : {}), ...(typeof fog.far === "number" ? { far: fog.far } : {}) };
+  }
+  block.renderer = {
+    toneMapping: toneMappingName(renderer.toneMapping),
+    toneMappingExposure: renderer.toneMappingExposure ?? 1,
+    outputColorSpace: renderer.outputColorSpace ?? "unknown",
+    pixelRatio: renderer.getPixelRatio?.() ?? window.devicePixelRatio,
+    shadows: { enabled: renderer.shadowMap?.enabled ?? false, type: shadowMapTypeName(renderer.shadowMap?.type) },
+    size: { width: renderer.domElement.clientWidth, height: renderer.domElement.clientHeight },
+    ...(typeof renderer.getClearAlpha === "function" ? { clearAlpha: renderer.getClearAlpha() } : {}),
+  };
+  if (postProcessing.length > 0) block.postProcessing = postProcessing;
+
+  // React Three Fiber marks every object it manages with __r3f.
+  let r3f = false;
+  scene.traverse((object) => {
+    if (!r3f && "__r3f" in object) r3f = true;
+  });
+  block.reactThreeFiber = r3f;
+
+  report.files.push({ path: "three/camera-path.json", text: JSON.stringify(path) });
+  block.cameraPathFile = "three/camera-path.json";
+  motionOf(report).three = path;
+  report.sections.three = block;
+});
+
+// ─── WebGL: getContext and shaderSource ──────────────────────────────────────
+// For WebGL that three.js does not draw (Babylon.js, PixiJS, raw WebGL): remember
+// which canvases got a WebGL context and the shader sources compiled on each. The
+// wrappers call the originals with the same arguments and return their results.
+
+const webglCanvases = new WeakMap<HTMLCanvasElement, { type: "webgl" | "webgl2"; context: object }>();
+const shaderTypes = new WeakMap<object, number>();
+const shaderSources = new WeakMap<object, { shader: object; source: string }[]>();
+const MAX_SHADERS_PER_CONTEXT = 100;
+const MAX_SHADER_CHARS = 100_000;
+
+function installWebglHooks(): void {
+  const proto = HTMLCanvasElement.prototype;
+  const getContext = proto.getContext;
+  proto.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+    const context = (getContext as (this: HTMLCanvasElement, ...args: unknown[]) => unknown).call(this, type, ...rest);
+    try {
+      if (context && (type === "webgl" || type === "webgl2" || type === "experimental-webgl")) {
+        webglCanvases.set(this, { type: type === "webgl2" ? "webgl2" : "webgl", context: context as object });
+      }
+    } catch {
+      // Never break the site.
+    }
+    return context;
+  } as typeof proto.getContext;
+
+  const protos = [window.WebGLRenderingContext?.prototype, window.WebGL2RenderingContext?.prototype].filter(Boolean) as (
+    | WebGLRenderingContext
+    | WebGL2RenderingContext
+  )[];
+  for (const glProto of protos) {
+    const createShader = glProto.createShader;
+    glProto.createShader = function (this: WebGLRenderingContext, type: number) {
+      const shader = createShader.call(this, type);
+      try {
+        if (shader) shaderTypes.set(shader, type);
+      } catch {
+        // Never break the site.
+      }
+      return shader;
+    };
+    const shaderSource = glProto.shaderSource;
+    glProto.shaderSource = function (this: WebGLRenderingContext, shader: WebGLShader, source: string) {
+      try {
+        const list = shaderSources.get(this) ?? [];
+        if (list.length < MAX_SHADERS_PER_CONTEXT && typeof source === "string") {
+          list.push({ shader, source: source.slice(0, MAX_SHADER_CHARS) });
+          shaderSources.set(this, list);
+        }
+      } catch {
+        // Never break the site.
+      }
+      return shaderSource.call(this, shader, source);
+    };
+  }
+}
+
+addCollector("webgl", ({ root, mode, report }) => {
+  if (mode !== "full") return;
+  const threeCanvases = new Set(liveRefs(three.renderers).map((r) => r.domElement));
+  const canvases = [root, ...Array.from(root.querySelectorAll("canvas")), ...Array.from(document.querySelectorAll("canvas"))].filter(
+    (el): el is HTMLCanvasElement => el instanceof HTMLCanvasElement && !threeCanvases.has(el) && webglCanvases.has(el) && overlaps(root, el),
+  );
+  const canvas = canvases[0];
+  if (!canvas || report.sections.three) return;
+  const info = webglCanvases.get(canvas);
+  if (!info) return;
+  const w = window as { BABYLON?: { EngineStore?: { Instances?: { getRenderingCanvas?(): unknown }[] } }; PIXI?: unknown };
+  const babylon = w.BABYLON?.EngineStore?.Instances?.some((engine) => engine.getRenderingCanvas?.() === canvas) ?? false;
+  const library = babylon ? "babylon" : w.PIXI ? "pixi" : w.BABYLON ? "babylon" : "unknown";
+  const shaderFiles: string[] = [];
+  const VERTEX = 0x8b31;
+  (shaderSources.get(info.context) ?? []).forEach(({ shader, source }, i) => {
+    const kind = shaderTypes.get(shader) === VERTEX ? "vert" : "frag";
+    const file = `webgl/shaders/shader-${i + 1}.${kind}.glsl`;
+    report.files.push({ path: file, text: source });
+    shaderFiles.push(file);
+  });
+  report.sections.three = { shaderFiles: [], webgl: { library, contextType: info.type, canvas: uniqueSelector(canvas), shaderFiles } };
+});
+
+// ─── animation assets: Lottie, dotLottie, Rive, Spline ───────────────────────
+// Finds the players in the selection and the files they play: lottie-web's
+// registry when it is global, LottieFiles and Spline web components by their src,
+// bundled lottie-web by the ids it gives its SVG, and resource timing for URLs.
+// Files are fetched from the browser cache and saved under assets/.
+
+const MAX_ASSET_BYTES = 15 * 1024 * 1024;
+
+interface LottieAnimationItem {
+  wrapper?: Element;
+  path?: string;
+  fileName?: string;
+  animationData?: unknown;
+  loop?: boolean | number;
+  autoplay?: boolean;
+  playSpeed?: number;
+  playDirection?: number;
+}
+
+function absoluteUrl(url: string): string | undefined {
+  try {
+    const parsed = new URL(url, location.href);
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? parsed.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function playerPlayback(el: Element): AssetPlayback {
+  const num = (name: string) => {
+    const value = el.getAttribute(name);
+    return value !== null && value !== "" && Number.isFinite(Number(value)) ? Number(value) : undefined;
+  };
+  const speed = num("speed");
+  const direction = num("direction");
+  return {
+    loop: el.hasAttribute("loop"),
+    autoplay: el.hasAttribute("autoplay"),
+    ...(el.hasAttribute("hover") || el.getAttribute("play-on-hover") !== null ? { hover: true } : {}),
+    ...(speed !== undefined ? { speed } : {}),
+    ...(direction !== undefined ? { direction } : {}),
+  };
+}
+
+async function fetchAsset(url: string): Promise<{ bytes: Uint8Array; type: string } | undefined> {
+  try {
+    const res = await fetch(url, { cache: "force-cache", credentials: "same-origin" });
+    if (!res.ok) return undefined;
+    const length = Number(res.headers.get("content-length") ?? 0);
+    if (length > MAX_ASSET_BYTES) return undefined;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.byteLength > MAX_ASSET_BYTES) return undefined;
+    return { bytes, type: res.headers.get("content-type") ?? "" };
+  } catch {
+    return undefined; // Cross-origin without CORS, or offline.
+  }
+}
+
+function parseJson(bytes: Uint8Array): unknown {
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return undefined;
+  }
+}
+
+addCollector("assets", async ({ root, mode, report }) => {
+  if (mode !== "full") return;
+  const records: AssetRecord[] = [];
+  const unresolved: { kind: AssetRecord["kind"]; target: string; width?: number; height?: number }[] = [];
+  const inlineData = new Map<string, unknown>();
+  const near = (el: Element | undefined | null): el is Element => !!el && el.isConnected && overlaps(root, el);
+
+  // lottie-web loaded as a script: window.lottie (or its old name, bodymovin) lists every animation.
+  const lottie = (window as { lottie?: unknown; bodymovin?: unknown }).lottie ?? (window as { bodymovin?: unknown }).bodymovin;
+  const registered = (lottie as { getRegisteredAnimations?: () => LottieAnimationItem[] } | undefined)?.getRegisteredAnimations?.() ?? [];
+  registered.forEach((anim, i) => {
+    if (!near(anim.wrapper)) return;
+    const playback: AssetPlayback = {
+      ...(anim.loop !== undefined ? { loop: anim.loop } : {}),
+      ...(anim.autoplay !== undefined ? { autoplay: anim.autoplay } : {}),
+      ...(typeof anim.playSpeed === "number" ? { speed: anim.playSpeed } : {}),
+      ...(typeof anim.playDirection === "number" ? { direction: anim.playDirection } : {}),
+    };
+    const url = anim.path && anim.fileName ? absoluteUrl(`${anim.path}${anim.fileName}.json`) : undefined;
+    const record: AssetRecord = {
+      kind: "lottie",
+      url: url ?? `${location.origin}${location.pathname}#kinetic-inline-lottie-${i + 1}`,
+      target: uniqueSelector(anim.wrapper as Element),
+      foundBy: "lottie-web",
+      playback,
+    };
+    if (isLottieJson(anim.animationData)) {
+      record.timing = lottieTiming(anim.animationData);
+      if (!url) inlineData.set(record.url, anim.animationData);
+    }
+    records.push(record);
+  });
+
+  // Web components: LottieFiles players, dotLottie players and Spline's viewer.
+  const players = [root, ...Array.from(root.querySelectorAll("lottie-player, dotlottie-player, dotlottie-wc, spline-viewer, rive-player"))];
+  for (const el of players) {
+    const tag = el.localName;
+    if (!["lottie-player", "dotlottie-player", "dotlottie-wc", "spline-viewer", "rive-player"].includes(tag)) continue;
+    const url = absoluteUrl(el.getAttribute("src") ?? el.getAttribute("url") ?? "");
+    if (!url) continue;
+    const byUrl = assetKindForUrl(url);
+    const kind: AssetRecord["kind"] =
+      tag === "spline-viewer" ? "spline" : tag === "rive-player" ? "rive" : byUrl === "dotlottie" || tag !== "lottie-player" ? (byUrl === "json" ? "lottie" : "dotlottie") : "lottie";
+    records.push({ kind, url, target: uniqueSelector(el), foundBy: tag, playback: playerPlayback(el) });
+  }
+
+  // Bundled lottie-web: its SVG renderer gives clip paths ids that start with __lottie_element.
+  for (const svg of Array.from(root.querySelectorAll("svg"))) {
+    const container = svg.parentElement;
+    if (!container || !svg.querySelector('[id^="__lottie_element"]')) continue;
+    const target = uniqueSelector(container);
+    if (records.some((r) => r.target === target)) continue;
+    const box = svg.viewBox?.baseVal;
+    unresolved.push({ kind: "lottie", target, ...(box && box.width ? { width: box.width, height: box.height } : {}) });
+  }
+
+  // Resource timing lists every file the page fetched, including ones loaded before the capture.
+  const resources = performance
+    .getEntriesByType("resource")
+    .map((e) => e.name)
+    .filter((url, i, all) => all.indexOf(url) === i && assetKindForUrl(url) !== undefined && absoluteUrl(url));
+  const known = new Set(records.map((r) => r.url));
+
+  // Match unresolved Lottie containers to fetched JSON files that are Lottie files of the same size.
+  const lottieCandidates: { url: string; json: Record<string, unknown> }[] = [];
+  if (unresolved.some((u) => u.kind === "lottie")) {
+    for (const url of resources.filter((u) => assetKindForUrl(u) === "json" && !known.has(u)).slice(0, 8)) {
+      const fetched = await fetchAsset(url);
+      const json = fetched ? parseJson(fetched.bytes) : undefined;
+      if (isLottieJson(json)) lottieCandidates.push({ url, json });
+    }
+  }
+  for (const slot of unresolved.filter((u) => u.kind === "lottie")) {
+    const match =
+      lottieCandidates.find((c) => slot.width !== undefined && Number(c.json.w) === slot.width && Number(c.json.h) === slot.height) ??
+      (lottieCandidates.length === 1 ? lottieCandidates[0] : undefined);
+    if (!match) continue;
+    lottieCandidates.splice(lottieCandidates.indexOf(match), 1);
+    records.push({ kind: "lottie", url: match.url, target: slot.target, foundBy: "resource-timing", timing: lottieTiming(match.json) });
+    known.add(match.url);
+    slot.target = "";
+  }
+
+  // Canvases in the selection with a Rive, dotLottie or Spline file in resource timing.
+  const canvases = Array.from(root.querySelectorAll("canvas")).filter((c) => !liveRefs(three.renderers).some((r) => r.domElement === c));
+  for (const url of resources) {
+    const kind = assetKindForUrl(url);
+    if (kind !== "rive" && kind !== "dotlottie" && kind !== "spline") continue;
+    if (known.has(url)) continue;
+    const canvas = canvases.shift();
+    if (!canvas) break;
+    records.push({ kind, url, target: uniqueSelector(canvas), foundBy: "resource-timing" });
+    known.add(url);
+  }
+
+  // Save each file once: inline Lottie data as JSON, the rest fetched from the cache.
+  for (const [i, record] of records.entries()) {
+    const file = assetFileName(record.url, record.kind, i);
+    const inline = inlineData.get(record.url);
+    if (inline !== undefined) {
+      report.files.push({ path: file, text: JSON.stringify(inline) });
+      record.file = file;
+      continue;
+    }
+    const fetched = await fetchAsset(record.url);
+    if (!fetched) continue;
+    if (record.kind === "lottie") {
+      const json = parseJson(fetched.bytes);
+      if (!isLottieJson(json)) continue;
+      record.timing ??= lottieTiming(json);
+      report.files.push({ path: file, text: JSON.stringify(json) });
+    } else {
+      report.files.push({ path: file, base64: bytesToBase64(fetched.bytes) });
+    }
+    record.file = file;
+  }
+
+  const motion = motionOf(report);
+  const open = unresolved.filter((u) => u.target);
+  if (records.length > 0) {
+    motion.assets = records;
+    report.sections.assets = { files: toAssetsBlock(records) };
+  }
+  if (open.length > 0) motion.unresolvedAssets = open.map(({ kind, target }) => ({ kind, target }));
 });

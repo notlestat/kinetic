@@ -265,6 +265,58 @@ export type Framework = z.infer<typeof FrameworkSchema>;
 
 // ─── three (three/) ──────────────────────────────────────────────────────────
 
+const Vec3Schema = z.tuple([z.number(), z.number(), z.number()]);
+
+export const ThreeCameraSchema = z.object({
+  /** "PerspectiveCamera", "OrthographicCamera". */
+  type: z.string(),
+  fov: z.number().optional(),
+  zoom: z.number().optional(),
+  near: z.number().optional(),
+  far: z.number().optional(),
+  position: Vec3Schema,
+  /** Euler XYZ in radians. */
+  rotation: Vec3Schema,
+  /** World direction the camera looks along. */
+  direction: Vec3Schema,
+  /** Estimated look-at point: where the view ray passes closest to the world origin. */
+  target: Vec3Schema,
+});
+
+export const ThreeLightSchema = z.object({
+  type: z.string(),
+  name: z.string().optional(),
+  /** Hex colour, e.g. "#ffffff". */
+  color: z.string().optional(),
+  intensity: z.number().optional(),
+  position: Vec3Schema.optional(),
+  castShadow: z.boolean().optional(),
+});
+
+export const ThreeRendererSchema = z.object({
+  /** "ACESFilmicToneMapping" and so on. */
+  toneMapping: z.string(),
+  toneMappingExposure: z.number(),
+  /** "srgb", "srgb-linear". */
+  outputColorSpace: z.string(),
+  pixelRatio: z.number(),
+  shadows: z.object({ enabled: z.boolean(), type: z.string() }),
+  /** Drawing buffer size in CSS pixels. */
+  size: z.object({ width: z.number(), height: z.number() }).optional(),
+  clearColor: z.string().optional(),
+  clearAlpha: z.number().optional(),
+});
+
+/** WebGL content not drawn by three.js: Babylon.js, PixiJS or raw WebGL. */
+export const WebglSchema = z.object({
+  library: z.enum(["babylon", "pixi", "unknown"]),
+  contextType: z.enum(["webgl", "webgl2"]),
+  /** Selector of the canvas. */
+  canvas: z.string(),
+  /** "webgl/shaders/*.glsl", the shader sources the page compiled. */
+  shaderFiles: z.array(RelativeFilePathSchema),
+});
+
 export const ThreeSchema = z.object({
   revision: z.string().optional(),
   /** "three/scene.json". */
@@ -273,7 +325,23 @@ export const ThreeSchema = z.object({
   shaderFiles: z.array(RelativeFilePathSchema),
   /** "three/camera-path.json". */
   cameraPathFile: RelativeFilePathSchema.optional(),
+  /** Pass and shader names seen while rendering, in order, e.g. ["RenderPass", "OutputShader"]. */
   postProcessing: z.array(z.string()).optional(),
+  /** "three/shaders/index.json": each ShaderMaterial with its shader files and uniform values. */
+  shaderIndexFile: RelativeFilePathSchema.optional(),
+  /** True when React Three Fiber manages the scene. */
+  reactThreeFiber: z.boolean().optional(),
+  /** Selector of the renderer's canvas. */
+  canvas: z.string().optional(),
+  camera: ThreeCameraSchema.optional(),
+  lights: z.array(ThreeLightSchema).optional(),
+  fog: z
+    .object({ type: z.enum(["Fog", "FogExp2"]), color: z.string(), near: z.number().optional(), far: z.number().optional(), density: z.number().optional() })
+    .optional(),
+  renderer: ThreeRendererSchema.optional(),
+  /** Binary data left out of scene.json because it was too big. */
+  stripped: z.array(z.object({ path: z.string(), reason: z.string(), size: z.number() })).optional(),
+  webgl: WebglSchema.optional(),
 });
 export type Three = z.infer<typeof ThreeSchema>;
 
