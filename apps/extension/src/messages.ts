@@ -42,9 +42,9 @@ export interface CaptureOptions {
 /** The trigger the background is firing while it asks the MAIN world for running motion. */
 export type MotionPassTrigger = "hover" | "focus" | "load";
 
-/** A file saved next to capture.json through POST /capture/file. */
+/** A file the capture collected, such as "states/hover-0.png" or a shader. Only text files reach the prompt. */
 export interface CaptureFile {
-  /** Relative path inside the capture folder, e.g. "states/hover-0.png". */
+  /** Relative path, e.g. "three/shaders/0.frag.glsl". */
   path: string;
   contentBase64: string;
 }
@@ -97,11 +97,17 @@ export interface StyleSnapshot {
 }
 
 export type CaptureOutcome = (
-  | { ok: true; saved: "companion"; path: string }
-  | { ok: true; saved: "queued"; reason: string }
+  | {
+      ok: true;
+      copied: true;
+      /** Length of the prompt on the clipboard, in characters. */
+      chars: number;
+      /** True when a section was cut to keep the prompt short. */
+      truncated: boolean;
+    }
   | { ok: false; error: string }
 ) & {
-  /** Test builds only: raw inputs for recording fixtures. */
+  /** Test builds only: the capture, its files, the prompt and the raw motion inputs. */
   debug?: unknown;
 };
 
@@ -112,6 +118,4 @@ export type RuntimeMessage =
   | { type: "capture:collect-motion"; rootSelector: string }
   | { type: "capture:watch"; trigger: MotionPassTrigger }
   | { type: "capture:ping" }
-  // Test builds only.
-  | { type: "test:companion"; url?: string }
-  | { type: "test:retry" };
+  | { type: "offscreen:copy"; text: string };

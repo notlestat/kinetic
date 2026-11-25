@@ -55,8 +55,8 @@ export function startContent(): void {
 
 function describe(outcome: CaptureOutcome): { text: string; tone: "ok" | "error" | "info" } {
   if (!outcome.ok) return { text: `Capture failed: ${outcome.error}`, tone: "error" };
-  if (outcome.saved === "companion") return { text: `Saved to library/${outcome.path}`, tone: "ok" };
-  return { text: `Companion not running. Capture kept and will retry. (${outcome.reason})`, tone: "error" };
+  const note = outcome.truncated ? " Long sections were cut to keep it short." : "";
+  return { text: `Copied. Paste it into Claude Code.${note}`, tone: "ok" };
 }
 
 export async function runCapture(
@@ -96,14 +96,6 @@ function installTestHooks(picker: Picker): void {
       const done = (outcome: CaptureOutcome) => postToWindow("test:capture-result", { requestId, outcome });
       if (!el) done({ ok: false, error: `no element matches ${selector}` });
       else void runCapture(el, options, picker.active ? picker : undefined).then(done);
-    } else if (type === "test:companion" || type === "test:retry") {
-      const message: RuntimeMessage =
-        type === "test:retry"
-          ? { type: "test:retry" }
-          : { type: "test:companion", ...(typeof event.data.url === "string" ? { url: event.data.url } : {}) };
-      void browser.runtime.sendMessage(message).then((response: unknown) =>
-        postToWindow(`${type}-result`, { requestId, response }),
-      );
     } else if (type === "test:picker") {
       picker.toggle();
       postToWindow("test:picker-result", { requestId, active: picker.active });

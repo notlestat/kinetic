@@ -1,12 +1,14 @@
-// Background service worker: chrome.debugger (CDP), screenshots, and sending captures to the companion.
+// Background service worker: chrome.debugger (CDP), screenshots, and copying the finished
+// capture to the clipboard as a prompt for Claude Code.
 
 import { browser } from "wxt/browser";
 import { type AssetRecord, toAssetsBlock } from "./asset-records.ts";
 import { CdpSession } from "./cdp.ts";
 import { MotionPass, type PassHooks, type PassResult } from "./cdp-motion.ts";
 import { type NetworkAsset, NetworkRecorder, resolveNetworkAssets } from "./cdp-network.ts";
-import { deliver, pendingCount, RETRY_ALARM, retryPending, setCompanionUrlForTests } from "./companion-client.ts";
-import type { CaptureOutcome, CaptureSubmission, RuntimeMessage } from "./messages.ts";
+import { copyToClipboard } from "./clipboard.ts";
+import { buildClipboardPrompt, type PromptFile } from "./clipboard-prompt.ts";
+import type { CaptureFile, CaptureOutcome, CaptureSubmission, RuntimeMessage } from "./messages.ts";
 import type { MainWorldMotion } from "./motion-records.ts";
 import { buildMotion } from "./motion-normalise.ts";
 import { captureStates, type StateCaptureResult } from "./states.ts";
@@ -21,26 +23,8 @@ export function startBackground(): void {
   browser.commands.onCommand.addListener((command, tab) => {
     if (command === "toggle-picker") void togglePicker(tab?.id);
   });
-  browser.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === RETRY_ALARM) void retryPending();
-  });
-  browser.runtime.onStartup.addListener(() => void retryPending());
-  browser.runtime.onInstalled.addListener(() => void retryPending());
-
   browser.runtime.onMessage.addListener((raw: unknown, sender, sendResponse: (response?: unknown) => void) => {
     const message = raw as RuntimeMessage;
-    if (TEST_HOOKS && message.type === "test:companion") {
-      setCompanionUrlForTests(message.url);
-      sendResponse({ ok: true });
-      return false;
-    }
-    if (TEST_HOOKS && message.type === "test:retry") {
-      retryPending().then(
-        async () => sendResponse({ ok: true, pending: await pendingCount() }),
-        (error: unknown) => sendResponse({ ok: false, error: String(error) }),
-      );
-      return true;
-    }
     if (message.type !== "capture:submit") return false;
     const tabId = sender.tab?.id;
     if (tabId === undefined) {
@@ -55,19 +39,42 @@ export function startBackground(): void {
 }
 
 export const UNREACHABLE_BADGE = "!";
-export const UNREACHABLE_TITLE = "Kinetic can't reach this page. Refresh it, then try again. Pages open before Kinetic was installed or reloaded need a refresh; Chrome pages can't be captured.";
+export const UNREACHABLE_TITLE = "Kinetic can't run on this page. Chrome keeps extensions out of its own pages, the Web Store and the PDF viewer. On other pages, refresh and try again.";
 const DEFAULT_TITLE = "Kinetic: pick a component (Alt+Shift+K)";
+
+/** WXT's output paths for the two content scripts. */
+const CONTENT_SCRIPT = "/content-scripts/content.js";
+const MAIN_WORLD_SCRIPT = "/content-scripts/main-world.js";
+
+function sendToggle(tabId: number): Promise<unknown> {
+  return browser.tabs.sendMessage(tabId, { type: "picker:toggle" } satisfies RuntimeMessage, { frameId: 0 });
+}
+
+/**
+ * Loads Kinetic's scripts into a tab that doesn't have them: a tab open since before
+ * Kinetic was installed or reloaded. Needs the <all_urls> host permission; content script
+ * matches alone don't let chrome.scripting into a page.
+ */
+async function injectContentScripts(tabId: number): Promise<void> {
+  const target = { tabId, frameIds: [0] };
+  // The MAIN world script skips itself when an older copy is still in the page.
+  await browser.scripting.executeScript({ target, files: [MAIN_WORLD_SCRIPT], world: "MAIN" });
+  await browser.scripting.executeScript({ target, files: [CONTENT_SCRIPT] });
+}
 
 async function togglePicker(tabId: number | undefined): Promise<void> {
   if (tabId === undefined) return;
   try {
-    await browser.tabs.sendMessage(tabId, { type: "picker:toggle" } satisfies RuntimeMessage, { frameId: 0 });
+    try {
+      await sendToggle(tabId);
+    } catch {
+      await injectContentScripts(tabId);
+      await sendToggle(tabId);
+    }
     await browser.action.setBadgeText({ tabId, text: "" });
     await browser.action.setTitle({ tabId, title: DEFAULT_TITLE });
   } catch {
-    // No content script on this page: a tab open since before Kinetic was installed or
-    // reloaded, or a page Chrome keeps extensions out of. Say so on the icon instead of
-    // doing nothing.
+    // Chrome refused the scripts: one of its own pages, or a page it keeps extensions out of.
     await browser.action.setBadgeText({ tabId, text: UNREACHABLE_BADGE }).catch(() => {});
     await browser.action.setBadgeBackgroundColor({ tabId, color: "#d93025" }).catch(() => {});
     await browser.action.setTitle({ tabId, title: UNREACHABLE_TITLE }).catch(() => {});
@@ -91,7 +98,7 @@ async function collectMotion(tabId: number, rootSelector: string): Promise<MainW
 
 /**
  * Adds what only the debugger can see (states, screenshots, the Animation
- * domain) to the content script's capture, then delivers it.
+ * domain) to the content script's capture, then copies it as a prompt.
  */
 async function runCapture(tabId: number, submission: CaptureSubmission): Promise<CaptureOutcome> {
   const capture = structuredClone(submission.capture);
@@ -152,7 +159,22 @@ async function runCapture(tabId: number, submission: CaptureSubmission): Promise
   };
   capture.motion = buildMotion(motionInputs);
 
-  const outcome = await deliver({ capture, files });
-  // Test builds return the raw motion inputs, so e2e/record-fixtures can save them for the unit tests.
-  return TEST_HOOKS ? { ...outcome, debug: { motionInputs } } : outcome;
+  const prompt = buildClipboardPrompt(capture, textFiles(files));
+  await copyToClipboard(prompt.text);
+  const outcome: CaptureOutcome = { ok: true, copied: true, chars: prompt.text.length, truncated: prompt.truncated };
+  if (!TEST_HOOKS) return outcome;
+  // Test builds return everything the capture made, so the e2e tests can save and check it. They
+  // also keep it on the worker, for captures that reload the page before the page hears back.
+  const withDebug: CaptureOutcome = { ...outcome, debug: { motionInputs, capture, files, prompt: prompt.text } };
+  (globalThis as { kineticLastCapture?: CaptureOutcome }).kineticLastCapture = withDebug;
+  return withDebug;
+}
+
+const TEXT_FILE = /\.(glsl|vert|frag|json|txt)$/i;
+
+/** The capture's text files, decoded, for the prompt. Images and binary assets stay out. */
+function textFiles(files: readonly CaptureFile[]): PromptFile[] {
+  return files
+    .filter((f) => TEXT_FILE.test(f.path))
+    .map((f) => ({ path: f.path, text: new TextDecoder().decode(Uint8Array.from(atob(f.contentBase64), (c) => c.charCodeAt(0))) }));
 }

@@ -82,7 +82,13 @@ function takeLoadCaptureFlag(): boolean {
   }
 }
 
+/** Set on window by the first copy of this script, so a second copy (injected into an open tab) skips itself. */
+const STARTED = Symbol.for("kinetic.main-world");
+
 export function startMainWorld(): void {
+  const page = window as unknown as Record<symbol, boolean>;
+  if (page[STARTED]) return;
+  page[STARTED] = true;
   let loadCapture = false;
   try {
     loadCapture = takeLoadCaptureFlag();
