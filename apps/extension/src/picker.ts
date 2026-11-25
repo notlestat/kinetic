@@ -1,7 +1,7 @@
 // Picker UI. Lives in a shadow root on its own host element, so site CSS cannot reach it.
 //
 // Hover highlights the element under the cursor. Arrow Up and Arrow Down move the
-// selection to the parent or the first child. Click (or Enter) captures. Shift with
+// selection to the parent or the first child. Click (or Enter) captures and copies. Shift with
 // either also reloads the page once to record load animations. Esc exits.
 
 export const PICKER_HOST_TAG = "kinetic-picker";
@@ -180,7 +180,7 @@ export class Picker {
     });
     const id = selected.id ? `#${selected.id}` : "";
     const size = `${Math.round(r.width)}×${Math.round(r.height)}`;
-    label.textContent = `${selected.localName}${id}  ${size}\n${this.status || "Click to copy. Shift+click also records load animations."}`;
+    label.textContent = `${selected.localName}${id}  ${size}\n${this.status || "Click to copy it as a prompt. Shift+click also records load animations."}`;
     label.style.display = "block";
     // The label is two lines or more, so place it by its real height.
     const height = label.offsetHeight || 44;

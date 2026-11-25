@@ -5,7 +5,6 @@ import { test as base, type BrowserContext, chromium, expect, type Page } from "
 import { E2E_LIBRARY_DIR, EXTENSION_DIR, TEST_PAGES } from "./paths.ts";
 
 export { expect };
-export const TEST_PAGES_ORIGIN = TEST_PAGES;
 
 export const test = base.extend<{ context: BrowserContext; page: Page }>({
   context: async ({}, use) => {
@@ -55,17 +54,43 @@ export async function kineticCall<T = Record<string, unknown>>(
   );
 }
 
-export type Outcome = { ok: true; saved: "companion"; path: string } | { ok: true; saved: "queued"; reason: string } | { ok: false; error: string };
+/** What the test build of the extension returns: the clipboard result plus everything the capture made. */
+export interface CaptureDebug {
+  capture: Capture;
+  files: { path: string; contentBase64: string }[];
+  prompt: string;
+  motionInputs: unknown;
+}
 
-/** Captures the element matching `selector` through the test hook. */
-export async function captureSelector(
-  page: Page,
-  selector: string,
-  slug: string,
-  options: Record<string, unknown> = {},
-): Promise<Outcome> {
+export type Outcome = ({ ok: true; copied: true; chars: number; truncated: boolean } | { ok: false; error: string }) & { debug?: CaptureDebug };
+
+const COMPANION = "http://127.0.0.1:4517";
+
+/** Captures the element matching `selector` through the test hook, without saving anything. */
+export async function captureOnly(page: Page, selector: string, slug: string, options: Record<string, unknown> = {}): Promise<Outcome> {
   const result = await kineticCall<{ outcome: Outcome }>(page, "test:capture", { selector, options: { ...options, slug } });
   return result.outcome;
+}
+
+/**
+ * Captures the element matching `selector`, then saves the capture through the test
+ * companion so the tests can read it from disk. The extension itself only copies to the
+ * clipboard; saving here is the test harness's job.
+ */
+export async function captureSelector(page: Page, selector: string, slug: string, options: Record<string, unknown> = {}): Promise<Outcome> {
+  const outcome = await captureOnly(page, selector, slug, options);
+  if (outcome.ok && outcome.debug) await saveToCompanion(outcome.debug);
+  return outcome;
+}
+
+export async function saveToCompanion({ capture, files }: CaptureDebug): Promise<void> {
+  const post = async (route: string, body: unknown) => {
+    const res = await fetch(`${COMPANION}${route}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(`companion ${route} answered ${res.status}: ${await res.text()}`);
+  };
+  await post("/capture", capture);
+  const { site, slug } = capture.meta;
+  for (const file of files) await post("/capture/file", { site, slug, path: file.path, contentBase64: file.contentBase64 });
 }
 
 export function captureDirFor(site: string, slug: string): string {
@@ -89,4 +114,29 @@ export async function pngSize(file: string): Promise<{ width: number; height: nu
   const buf = await readFile(file);
   expect(buf.subarray(1, 4).toString("ascii")).toBe("PNG");
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+/**
+ * Waits for the service worker's last capture to have a slug starting with `prefix`, then
+ * saves it like captureSelector does. For captures that reload the page, which then never
+ * hears back. Returns the slug.
+ */
+export async function saveWorkerCapture(context: BrowserContext, prefix: string): Promise<string> {
+  const [worker] = context.serviceWorkers();
+  if (!worker) throw new Error("no service worker");
+  let debug: CaptureDebug | undefined;
+  await expect
+    .poll(
+      async () => {
+        const last = await worker.evaluate(() => (globalThis as { kineticLastCapture?: { debug?: unknown } }).kineticLastCapture?.debug);
+        const found = last as CaptureDebug | undefined;
+        if (found?.capture.meta.slug.startsWith(prefix)) debug = found;
+        return debug !== undefined;
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(true);
+  if (!debug) throw new Error("unreachable");
+  await saveToCompanion(debug);
+  return debug.capture.meta.slug;
 }

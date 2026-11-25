@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   captureDirFor,
+  captureOnly,
   captureSelector,
   expect,
   fileExists,
@@ -17,7 +18,7 @@ const SITE = "127.0.0.1";
 test("captures the button with styles, tokens, fonts, states and screenshots", async ({ page }) => {
   await openTestPage(page, "button.html");
   const outcome = await captureSelector(page, "button.cta", "cta-button");
-  expect(outcome).toMatchObject({ ok: true, saved: "companion", path: `${SITE}/cta-button` });
+  expect(outcome).toMatchObject({ ok: true, copied: true, truncated: false });
 
   const dir = captureDirFor(SITE, "cta-button");
   const capture = await readCaptureJson(SITE, "cta-button");
@@ -104,7 +105,8 @@ test("captures the nav bar with absolute URLs, link tokens and per-link hover st
   expect(changed).toMatchObject({ color: "rgb(10, 37, 64)", "background-color": "rgb(246, 249, 252)" });
 });
 
-test("picker highlights, walks the tree with the arrow keys, captures on click and exits on Esc", async ({ page }) => {
+test("picker highlights, walks the tree with the arrow keys, copies on click and exits on Esc", async ({ context, page }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:5180" });
   await openTestPage(page, "button.html");
   const label = page.locator("kinetic-picker .label");
 
@@ -128,31 +130,39 @@ test("picker highlights, walks the tree with the arrow keys, captures on click a
     });
   });
   await page.mouse.click(button.x - 20 > 0 ? button.x + 4 : button.x + 4, button.y - 8);
-  await expect(label).toContainText("Saved to library/127.0.0.1/section-", { timeout: 60_000 });
+  await expect(label).toContainText("Copied. Paste it into Claude Code.", { timeout: 60_000 });
   expect(await page.evaluate(() => (window as { sectionClicks?: number }).sectionClicks)).toBe(0);
+
+  // The prompt is on the system clipboard, ready to paste.
+  await page.bringToFront();
+  const pasted = await page.evaluate(() => navigator.clipboard.readText());
+  expect(pasted).toMatch(/^# Rebuild /);
+  expect(pasted).toContain("Component root on that page: `");
+  expect(pasted).toContain("section.hero");
 
   await page.keyboard.press("Escape");
   await expect(page.locator("kinetic-picker")).toHaveCount(0);
 });
 
-test("keeps the capture when the companion is offline and retries it later", async ({ page }) => {
+test("copies a self-contained prompt and never saves to the companion", async ({ page }) => {
   await openTestPage(page, "button.html");
-  await kineticCall(page, "test:companion", { url: "http://127.0.0.1:4599" });
-  try {
-    const outcome = await captureSelector(page, "button.cta", "offline-button");
-    expect(outcome).toMatchObject({ ok: true, saved: "queued" });
-    expect(await fileExists(path.join(captureDirFor(SITE, "offline-button"), "capture.json"))).toBe(false);
-  } finally {
-    await kineticCall(page, "test:companion", {});
-  }
-  const retry = await kineticCall<{ response: { ok: boolean; pending: number } }>(page, "test:retry");
-  expect(retry.response).toEqual({ ok: true, pending: 0 });
-  const capture = await readCaptureJson(SITE, "offline-button");
-  expect(capture.states?.length).toBeGreaterThan(0);
-  expect(await fileExists(path.join(captureDirFor(SITE, "offline-button"), "states/default.png"))).toBe(true);
+  const outcome = await captureOnly(page, "button.cta", "clipboard-only");
+  expect(outcome).toMatchObject({ ok: true, copied: true });
+  if (!outcome.ok || !outcome.debug) throw new Error("no debug output from the test build");
+  expect(outcome.chars).toBe(outcome.debug.prompt.length);
+
+  const prompt = outcome.debug.prompt;
+  for (const heading of ["## Task", "## Motion", "## States", "## Tokens", "## Markup", "## Computed styles"]) expect(prompt).toContain(heading);
+  expect(prompt).toContain("Library: **Framer Motion**");
+  expect(prompt).toMatch(/\| \d+ ms \|/);
+  // Nothing points at files that only exist in a capture folder.
+  expect(prompt).not.toMatch(/\]\([^)]*\.(json|png|webm|html)\)/);
+
+  // The extension never posted it anywhere.
+  expect(await fileExists(path.join(captureDirFor(SITE, "clipboard-only"), "capture.json"))).toBe(false);
 });
 
-test("the toolbar button says to refresh a page Kinetic can't reach, and opens the picker once it can", async ({ context, page }) => {
+test("the toolbar button flags a page Kinetic can't run on, and opens the picker on a normal page", async ({ context, page }) => {
   const [worker] = context.serviceWorkers();
   if (!worker) throw new Error("no service worker");
   // Presses the toolbar button for the active tab and reads back its badge and tooltip.
@@ -171,9 +181,9 @@ test("the toolbar button says to refresh a page Kinetic can't reach, and opens t
       return { badge: await chrome.action.getBadgeText({ tabId }), title: await chrome.action.getTitle({ tabId }) };
     });
 
-  // about:blank has no content script, like a tab left open while Kinetic was reloaded.
+  // Chrome keeps scripts out of about:blank, like its own pages, so the picker cannot open there.
   await page.goto("about:blank");
-  expect(await press()).toEqual({ badge: "!", title: expect.stringContaining("Refresh it, then try again") });
+  expect(await press()).toEqual({ badge: "!", title: expect.stringContaining("Kinetic can't run on this page") });
 
   await openTestPage(page, "button.html");
   expect(await press()).toEqual({ badge: "", title: "Kinetic: pick a component (Alt+Shift+K)" });

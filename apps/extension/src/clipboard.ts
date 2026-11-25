@@ -1,61 +1,34 @@
-// Copies a picked component to the clipboard: Markdown text for a coding agent and,
-// when a screenshot is available, a PNG for canvases. One clipboard item carries both,
-// and the app you paste into picks the format it understands.
+// Background side of the clipboard. A service worker has no DOM and no clipboard, so
+// the copy happens in an offscreen page that this module opens, uses and closes.
 
-export interface CopyContent {
-  text: string;
-  image: Blob | undefined;
+import { browser } from "wxt/browser";
+import type { RuntimeMessage } from "./messages.ts";
+
+const OFFSCREEN_PATH = "/offscreen.html";
+
+/** One copy at a time, so two captures never race to open the offscreen page. */
+let queue: Promise<unknown> = Promise.resolve();
+
+export function copyToClipboard(text: string): Promise<void> {
+  const run = queue.then(() => copyNow(text));
+  queue = run.catch(() => undefined);
+  return run;
 }
 
-/** What reached the clipboard. */
-export type CopyResult = "image+text" | "text" | "failed";
-
-/**
- * Starts the clipboard write straight away, while the click still counts as a user
- * gesture, and fills it in when `content` resolves. Call it before the first await
- * in a click handler.
- */
-export async function copyToClipboard(content: Promise<CopyContent>): Promise<CopyResult> {
-  // navigator.clipboard only exists on https and localhost pages.
-  if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
-    const item = new ClipboardItem({
-      "text/plain": content.then((c) => new Blob([c.text], { type: "text/plain" })),
-      "image/png": content.then((c) => c.image ?? Promise.reject(new Error("no screenshot"))),
+async function copyNow(text: string): Promise<void> {
+  const url = browser.runtime.getURL(OFFSCREEN_PATH);
+  const open = await browser.runtime.getContexts({ contextTypes: ["OFFSCREEN_DOCUMENT"], documentUrls: [url] });
+  if (open.length === 0) {
+    await browser.offscreen.createDocument({
+      url: OFFSCREEN_PATH,
+      reasons: ["CLIPBOARD"],
+      justification: "Copy the capture prompt to the clipboard",
     });
-    try {
-      await navigator.clipboard.write([item]);
-      return "image+text";
-    } catch {
-      // No screenshot, or the page refused the write. Fall through to text only.
-    }
-  }
-  let text: string;
-  try {
-    text = (await content).text;
-  } catch {
-    return "failed";
   }
   try {
-    await navigator.clipboard.writeText(text);
-    return "text";
-  } catch {
-    return copyWithExecCommand(text) ? "text" : "failed";
-  }
-}
-
-/** The old copy command. Works on http pages, where navigator.clipboard is missing. */
-function copyWithExecCommand(text: string): boolean {
-  const onCopy = (event: ClipboardEvent) => {
-    event.clipboardData?.setData("text/plain", text);
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  };
-  window.addEventListener("copy", onCopy, true);
-  try {
-    return document.execCommand("copy");
-  } catch {
-    return false;
+    const result = (await browser.runtime.sendMessage({ type: "offscreen:copy", text } satisfies RuntimeMessage)) as { ok?: boolean } | undefined;
+    if (!result?.ok) throw new Error("Chrome refused the copy");
   } finally {
-    window.removeEventListener("copy", onCopy, true);
+    await browser.offscreen.closeDocument().catch(() => {});
   }
 }

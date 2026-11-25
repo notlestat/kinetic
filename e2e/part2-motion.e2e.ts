@@ -1,8 +1,5 @@
-import { readdir } from "node:fs/promises";
-import path from "node:path";
 import type { MotionEntry } from "@kinetic/schema";
-import { captureSelector, expect, kineticCall, openTestPage, readCaptureJson, test } from "./fixtures.ts";
-import { E2E_LIBRARY_DIR } from "./paths.ts";
+import { captureOnly, captureSelector, expect, kineticCall, openTestPage, readCaptureJson, saveWorkerCapture, test } from "./fixtures.ts";
 
 const SITE = "127.0.0.1";
 
@@ -107,13 +104,11 @@ test("captures GSAP tweens, ScrollTriggers and Lenis options", async ({ page }) 
   expect(motion?.summary?.bySource.scrolltrigger).toBeGreaterThanOrEqual(3);
 });
 
-test("reloads to record GSAP load animations when the user opts in", async ({ page }) => {
+test("reloads to record GSAP load animations when the user opts in", async ({ context, page }) => {
   await openTestPage(page, "gsap.html");
-  // The capture reloads the page, so this page never hears back. Wait for the file instead.
-  void captureSelector(page, "section.hero", "gsap-hero-load", { reloadForLoadAnimations: true }).catch(() => undefined);
-  await expect
-    .poll(async () => readCaptureJson(SITE, "gsap-hero-load").then(() => true, () => false), { timeout: 60_000 })
-    .toBe(true);
+  // The capture reloads the page, so this page never hears back. Take the result from the worker.
+  void captureOnly(page, "section.hero", "gsap-hero-load", { reloadForLoadAnimations: true }).catch(() => undefined);
+  await saveWorkerCapture(context, "gsap-hero-load");
   const capture = await readCaptureJson(SITE, "gsap-hero-load");
   const [hero] = find(capture.motion?.entries ?? [], { source: "gsap", targetIncludes: "div.hero-item" });
   expect(hero).toMatchObject({ trigger: "load", duration: 600, stagger: 100, easing: [0.215, 0.61, 0.355, 1] });
@@ -122,9 +117,7 @@ test("reloads to record GSAP load animations when the user opts in", async ({ pa
   expect(hero?.properties.find((p) => p.name === "opacity")?.keyframes).toEqual([{ offset: 0, value: 0 }, { offset: 1, value: 1 }]);
 });
 
-test("Shift+Enter in the picker opts into the reload for load animations", async ({ page }) => {
-  const folders = () => readdir(path.join(E2E_LIBRARY_DIR, SITE)).catch((): string[] => []);
-  const before = new Set(await folders());
+test("Shift+Enter in the picker opts into the reload for load animations", async ({ context, page }) => {
   await openTestPage(page, "gsap.html");
   await kineticCall(page, "test:picker");
   const item = await page.locator("div.hero-item").first().boundingBox();
@@ -137,13 +130,9 @@ test("Shift+Enter in the picker opts into the reload for load animations", async
   await page.evaluate(() => Object.assign(window, { kineticBeforeReload: true }));
   await page.keyboard.press("Shift+Enter");
 
-  // The picker's slug ends in a timestamp, so look for a new folder with the expected prefix.
-  const slug = async () => (await folders()).find((name) => name.startsWith("section-hero-") && !before.has(name));
-  await expect.poll(async () => {
-    const found = await slug();
-    return found ? readCaptureJson(SITE, found).then(() => true, () => false) : false;
-  }, { timeout: 60_000 }).toBe(true);
-  const capture = await readCaptureJson(SITE, (await slug()) as string);
+  // The picker's slug ends in a timestamp, so match the prefix.
+  const slug = await saveWorkerCapture(context, "section-hero-");
+  const capture = await readCaptureJson(SITE, slug);
   const [hero] = find(capture.motion?.entries ?? [], { source: "gsap", targetIncludes: "div.hero-item" });
   expect(hero).toMatchObject({ trigger: "load", duration: 600, stagger: 100 });
   await expect.poll(() => page.evaluate(() => "kineticBeforeReload" in window).catch(() => true)).toBe(false);
