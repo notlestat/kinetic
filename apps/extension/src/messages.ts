@@ -1,6 +1,7 @@
 // Message shapes shared by the content script, the background worker and the MAIN world.
 
 import type { BoundingBox, Capture } from "@kinetic/schema";
+import type { CopyResult } from "./clipboard.ts";
 import type { CssMotionReport, MainWorldMotion } from "./motion-records.ts";
 import type { StyleMap } from "./style-diff.ts";
 
@@ -112,6 +113,10 @@ export type RuntimeMessage =
   | { type: "capture:collect-motion"; rootSelector: string }
   | { type: "capture:watch"; trigger: MotionPassTrigger }
   | { type: "capture:ping" }
+  /** Content script → background: a PNG data URL of the visible tab, for the clipboard shot. */
+  | { type: "capture:visible-tab" }
+  /** Content script → background: the reference reached the clipboard, so mark the toolbar icon. */
+  | { type: "capture:copied"; result: CopyResult }
   // Test builds only.
   | { type: "test:companion"; url?: string }
   | { type: "test:retry" };

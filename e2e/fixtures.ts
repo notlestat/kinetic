@@ -5,6 +5,7 @@ import { test as base, type BrowserContext, chromium, expect, type Page } from "
 import { E2E_LIBRARY_DIR, EXTENSION_DIR, TEST_PAGES } from "./paths.ts";
 
 export { expect };
+export const TEST_PAGES_ORIGIN = TEST_PAGES;
 
 export const test = base.extend<{ context: BrowserContext; page: Page }>({
   context: async ({}, use) => {

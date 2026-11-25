@@ -180,7 +180,7 @@ export class Picker {
     });
     const id = selected.id ? `#${selected.id}` : "";
     const size = `${Math.round(r.width)}×${Math.round(r.height)}`;
-    label.textContent = `${selected.localName}${id}  ${size}\n${this.status || "Click to capture. Shift+click also records load animations."}`;
+    label.textContent = `${selected.localName}${id}  ${size}\n${this.status || "Click to copy. Shift+click also records load animations."}`;
     label.style.display = "block";
     // The label is two lines or more, so place it by its real height.
     const height = label.offsetHeight || 44;

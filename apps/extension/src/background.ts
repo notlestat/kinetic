@@ -3,6 +3,7 @@
 import { browser } from "wxt/browser";
 import { type AssetRecord, toAssetsBlock } from "./asset-records.ts";
 import { CdpSession } from "./cdp.ts";
+import type { CopyResult } from "./clipboard.ts";
 import { MotionPass, type PassHooks, type PassResult } from "./cdp-motion.ts";
 import { type NetworkAsset, NetworkRecorder, resolveNetworkAssets } from "./cdp-network.ts";
 import { deliver, pendingCount, RETRY_ALARM, retryPending, setCompanionUrlForTests } from "./companion-client.ts";
@@ -41,6 +42,20 @@ export function startBackground(): void {
       );
       return true;
     }
+    if (message.type === "capture:visible-tab") {
+      // Needs the activeTab grant that opening the picker from the icon or shortcut gives.
+      const windowId = sender.tab?.windowId;
+      if (windowId === undefined) {
+        sendResponse(undefined);
+        return false;
+      }
+      browser.tabs.captureVisibleTab(windowId, { format: "png" }).then(sendResponse, () => sendResponse(undefined));
+      return true;
+    }
+    if (message.type === "capture:copied") {
+      void markCopied(sender.tab?.id, message.result);
+      return false;
+    }
     if (message.type !== "capture:submit") return false;
     const tabId = sender.tab?.id;
     if (tabId === undefined) {
@@ -72,6 +87,28 @@ async function togglePicker(tabId: number | undefined): Promise<void> {
     await browser.action.setBadgeBackgroundColor({ tabId, color: "#d93025" }).catch(() => {});
     await browser.action.setTitle({ tabId, title: UNREACHABLE_TITLE }).catch(() => {});
   }
+}
+
+/**
+ * A green tick on the toolbar icon for a few seconds. The picker label stays hidden while
+ * the debugger takes screenshots, so the icon is where the copy shows up first.
+ */
+async function markCopied(tabId: number | undefined, result: CopyResult): Promise<void> {
+  if (tabId === undefined) return;
+  const ok = result !== "failed";
+  const title =
+    result === "image+text"
+      ? "Copied: image and text. Paste into a canvas or your agent."
+      : result === "text"
+        ? "Copied: text only. Kinetic could not grab a screenshot of this page."
+        : "Kinetic could not copy to the clipboard. The capture still goes to the library.";
+  await browser.action.setBadgeBackgroundColor({ tabId, color: ok ? "#0b6b3a" : "#d93025" }).catch(() => {});
+  await browser.action.setBadgeText({ tabId, text: ok ? "✓" : "!" }).catch(() => {});
+  await browser.action.setTitle({ tabId, title }).catch(() => {});
+  setTimeout(() => {
+    void browser.action.setBadgeText({ tabId, text: "" }).catch(() => {});
+    void browser.action.setTitle({ tabId, title: DEFAULT_TITLE }).catch(() => {});
+  }, 4000);
 }
 
 /** Asks the content script (and through it the MAIN world) for the motion running right now. */

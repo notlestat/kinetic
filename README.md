@@ -2,7 +2,7 @@
 
 # Kinetic
 
-Kinetic captures a component from a web page and helps you rebuild it as React. A Chrome extension records the component's DOM, styles, states and motion. A local companion app saves the capture, records a video of the component moving, writes a rebuild brief, and checks your rebuild against the original. A small web app lets you browse and compare everything you have captured.
+Kinetic captures a component from a web page and helps you rebuild it as React. A Chrome extension records the component's DOM, styles, states and motion, and copies a screenshot and a Markdown description of the component to your clipboard the moment you pick it. A local companion app saves the capture, records a video of the component moving, writes a rebuild brief, and checks your rebuild against the original. A small web app lets you browse and compare everything you have captured.
 
 No API key is needed. The default rebuild hands a brief to the coding agent you already use. The Claude API is an optional mode and is off unless you turn it on.
 
@@ -46,11 +46,22 @@ The install also runs `wxt prepare`, which generates the extension's TypeScript 
 3. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select `apps/extension/.output/chrome-mv3`.
 4. Open a page and press Alt+Shift+K, or click the Kinetic icon, to start the picker.
 5. Point at the component. Arrow Up selects the parent and Arrow Down selects the first child.
-6. Click or press Enter to capture. To also record animations that run on page load, hold Shift: the page reloads once while Kinetic watches. Esc closes the picker.
+6. Click or press Enter to copy the component and capture it. To also record animations that run on page load, hold Shift: the page reloads once while Kinetic watches. Esc closes the picker.
 
-The picker label shows `Saved to library/<site>/<slug>` when the companion has the capture. If the companion is not running, the extension keeps the capture and sends it when the companion is back.
+The copy lands first, in under a tenth of a second, and the toolbar icon shows a green tick. The full capture then runs for a few seconds and goes to the library. When it finishes, the picker label shows `Saved to library/<site>/<slug>`. If the companion is not running, the extension keeps the capture and sends it when the companion is back.
 
 For development, run `pnpm dev:extension` instead of step 2. WXT opens Chrome with the extension loaded and reloads it when files change.
+
+## Paste a component into an agent or a canvas
+
+Each pick puts one clipboard item with two formats on the clipboard. The app you paste into takes the format it reads:
+
+- A PNG of the component as it looks on screen, with 8 px of room around it, for canvases and image tools.
+- Markdown text for a coding agent. It has the source URL, the size, the tokens as CSS variables, the fonts, the cleaned HTML, the computed CSS of each element, the motion running when you clicked, and the folder the full capture goes to.
+
+In Claude Code on macOS, Cmd+V pastes the text and Ctrl+V pastes the image.
+
+The copy uses only what the page shows at the moment you click, so it is fast but partial. Transition timing is in the CSS, but the values a hover or focus changes to come from the state pass, which only the library capture has. The screenshot covers the part of the component inside the viewport. Kinetic copies text only, without the image, in two cases: on `http` pages other than localhost, which have no clipboard API, and when Chrome does not let it capture the tab. Chrome allows the capture after you open the picker from the Kinetic icon or Alt+Shift+K.
 
 ## Record the component moving
 
